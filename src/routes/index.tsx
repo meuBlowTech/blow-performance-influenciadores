@@ -245,6 +245,57 @@ function Dashboard() {
 
   const top15 = cuponsRanking.slice(0, 15);
 
+  // Influenciadoras — mesma agregação de cupons, mas exibida como visão de influência
+  const influencerRanking = cuponsRanking;
+  const topInfluencerCodes = useMemo(
+    () => influencerRanking.slice(0, 5).map((r) => r.codigo),
+    [influencerRanking],
+  );
+  const activeInfluencers = selectedInfluencers ?? topInfluencerCodes;
+
+  const influencerLabels = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of influencerRanking) {
+      m.set(r.codigo, r.nome ? `${r.codigo} · ${r.nome}` : r.codigo);
+    }
+    return m;
+  }, [influencerRanking]);
+
+  const influencerTimeSeries = useMemo(() => {
+    if (activeInfluencers.length === 0) return [] as Array<Record<string, number | string>>;
+    const active = new Set(activeInfluencers);
+    // period -> code -> receita
+    const map = new Map<string, Map<string, number>>();
+    for (const r of filtered) {
+      const code = r.codigo_cupom;
+      if (!code || !active.has(code)) continue;
+      if (!r.data_hora_atendimento) continue;
+      const key =
+        chartModeInf === "dia"
+          ? isoDay(r.data_hora_atendimento)
+          : isoWeek(r.data_hora_atendimento);
+      if (!key) continue;
+      if (!map.has(key)) map.set(key, new Map());
+      const inner = map.get(key)!;
+      inner.set(code, (inner.get(code) || 0) + (Number(r.valor_liquido) || 0));
+    }
+    return Array.from(map.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([k, inner]) => {
+        const row: Record<string, number | string> = {
+          key: k,
+          label:
+            chartModeInf === "dia"
+              ? dateBR(k + "T00:00:00")
+              : k.replace("-S", " · Sem "),
+        };
+        for (const code of activeInfluencers) {
+          row[code] = Number((inner.get(code) || 0).toFixed(2));
+        }
+        return row;
+      });
+  }, [filtered, chartModeInf, activeInfluencers]);
+
   // Unidades
   const unidadesData = useMemo(() => {
     type Agg = { unidade: string; receita: number; comandas: Set<string> };
