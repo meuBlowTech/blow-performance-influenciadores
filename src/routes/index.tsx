@@ -551,112 +551,55 @@ function Dashboard() {
               Top 15 cupons por receita líquida no período.
             </p>
           </div>
-          <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
-            <div className="xl:col-span-3 h-[520px]">
-              {top15.length === 0 ? (
-                <EmptyState loading={loading} />
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={top15.map((r) => ({
-                      ...r,
-                      label: `${r.codigo}${r.nome ? " · " + r.nome : ""}`,
-                    }))}
-                    layout="vertical"
-                    margin={{ top: 5, right: 30, bottom: 5, left: 20 }}
-                  >
-                    <CartesianGrid stroke={C.neutral} horizontal={false} />
-                    <XAxis
-                      type="number"
-                      tick={{ fill: C.greenDark, fontSize: 11 }}
-                      stroke={C.neutralDark}
-                      tickFormatter={(v) =>
-                        v >= 1000 ? `R$ ${(v / 1000).toFixed(0)}k` : `R$ ${v}`
-                      }
-                    />
-                    <YAxis
-                      type="category"
-                      dataKey="label"
-                      width={220}
-                      tick={{ fill: C.greenDark, fontSize: 11 }}
-                      stroke={C.neutralDark}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        background: "#fff",
-                        border: `1px solid ${C.neutral}`,
-                        borderRadius: 10,
-                        fontSize: 12,
-                      }}
-                      formatter={(v: number) => [brl(v), "Receita"]}
-                    />
-                    <Bar dataKey="receita" radius={[0, 6, 6, 0]}>
-                      {top15.map((_, i) => (
-                        <Cell
-                          key={i}
-                          fill={i === 0 ? C.terracotta : BAR_PALETTE[i % BAR_PALETTE.length]}
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-            <div className="xl:col-span-2">
-              <div className="overflow-x-auto rounded-xl border border-border">
-                <table className="w-full text-sm">
-                  <thead className="bg-[color:var(--color-blow-pink-light)]/60 text-[color:var(--color-blow-green-dark)]">
-                    <tr>
-                      <Th>Cupom</Th>
-                      <Th className="text-right">Receita</Th>
-                      <Th className="text-right">Atend.</Th>
-                      <Th className="text-right">Ticket</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {top15.map((r, i) => (
-                      <tr
-                        key={r.codigo}
-                        className="border-t border-border hover:bg-muted/50"
-                      >
-                        <Td>
-                          <div className="font-medium flex items-center gap-2">
-                            {i === 0 && (
-                              <span className="inline-block h-2 w-2 rounded-full bg-[color:var(--color-blow-terracotta)]" />
-                            )}
-                            {r.codigo}
-                          </div>
-                          {r.nome && (
-                            <div className="text-xs text-muted-foreground">
-                              {r.nome}
-                            </div>
-                          )}
-                        </Td>
-                        <Td className="text-right tabular-nums">
-                          {brl(r.receita)}
-                        </Td>
-                        <Td className="text-right tabular-nums">
-                          {num(r.atendimentos)}
-                        </Td>
-                        <Td className="text-right tabular-nums">
-                          {brl(r.ticket)}
-                        </Td>
-                      </tr>
+          <div className="h-[520px]">
+            {top15.length === 0 ? (
+              <EmptyState loading={loading} />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={top15.map((r) => ({
+                    ...r,
+                    label: `${r.codigo}${r.nome ? " · " + r.nome : ""}`,
+                  }))}
+                  layout="vertical"
+                  margin={{ top: 5, right: 30, bottom: 5, left: 20 }}
+                >
+                  <CartesianGrid stroke={C.neutral} horizontal={false} />
+                  <XAxis
+                    type="number"
+                    tick={{ fill: C.greenDark, fontSize: 11 }}
+                    stroke={C.neutralDark}
+                    tickFormatter={(v) =>
+                      v >= 1000 ? `R$ ${(v / 1000).toFixed(0)}k` : `R$ ${v}`
+                    }
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="label"
+                    width={220}
+                    tick={{ fill: C.greenDark, fontSize: 11 }}
+                    stroke={C.neutralDark}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: "#fff",
+                      border: `1px solid ${C.neutral}`,
+                      borderRadius: 10,
+                      fontSize: 12,
+                    }}
+                    formatter={(v: number) => [brl(v), "Receita"]}
+                  />
+                  <Bar dataKey="receita" radius={[0, 6, 6, 0]}>
+                    {top15.map((_, i) => (
+                      <Cell
+                        key={i}
+                        fill={i === 0 ? C.terracotta : BAR_PALETTE[i % BAR_PALETTE.length]}
+                      />
                     ))}
-                    {top15.length === 0 && (
-                      <tr>
-                        <td
-                          colSpan={4}
-                          className="p-6 text-center text-muted-foreground text-sm"
-                        >
-                          Sem dados no período.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </section>
 
