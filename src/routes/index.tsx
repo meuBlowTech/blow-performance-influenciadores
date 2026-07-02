@@ -624,7 +624,7 @@ function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {influencerRanking.map((r) => (
+                {influencerRanking.slice(0, expandInfluencers ? undefined : 10).map((r) => (
                   <tr key={r.codigo} className="border-t border-border hover:bg-muted/50">
                     <Td>
                       <div className="font-medium">{r.nome || "—"}</div>
@@ -645,6 +645,19 @@ function Dashboard() {
               </tbody>
             </table>
           </div>
+          {influencerRanking.length > 10 && (
+            <div className="mt-3 flex justify-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setExpandInfluencers((v) => !v)}
+                className="text-[color:var(--color-blow-green-dark)] hover:bg-[color:var(--color-blow-green-light)]/20"
+              >
+                {expandInfluencers ? "Ver menos" : "Ver mais"}
+              </Button>
+            </div>
+          )}
+
 
           <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
             <div>
