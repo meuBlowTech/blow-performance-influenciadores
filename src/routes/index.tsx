@@ -1123,13 +1123,67 @@ function EmptyState({ loading }: { loading: boolean }) {
   );
 }
 
-/* ---------- Curadoria ---------- */
+/* ---------- Influenciadores ---------- */
+
+type Classificacao = "PRIORITARIO" | "ATENCAO" | "SAUDAVEL";
+
+const CLASS_META: Record<
+  Classificacao,
+  { label: string; color: string; bg: string; text: string }
+> = {
+  PRIORITARIO: {
+    label: "Prioritário",
+    color: C.terracotta,
+    bg: "bg-[color:var(--color-blow-terracotta)]/15",
+    text: "text-[color:var(--color-blow-terracotta)]",
+  },
+  ATENCAO: {
+    label: "Ponto de atenção",
+    color: "#D9A400",
+    bg: "bg-amber-100",
+    text: "text-amber-800",
+  },
+  SAUDAVEL: {
+    label: "Saudável",
+    color: C.green,
+    bg: "bg-[color:var(--color-blow-green-light)]/40",
+    text: "text-[color:var(--color-blow-green-dark)]",
+  },
+};
+
+const parseCodes = (raw: string | null): string[] => {
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((s) => s.trim().toUpperCase())
+    .filter(
+      (s) => s && s !== "NÃO IDENTIFICADO" && s !== "NAO IDENTIFICADO",
+    );
+};
+
+const extractUF = (nome: string): string => {
+  const m = nome.match(/bLOw\s+([A-Za-z]{2})\s*\|/i);
+  return m ? m[1].toUpperCase() : "—";
+};
 
 function CuradoriaView() {
   const [emitidos, setEmitidos] = useState<CupomEmitido[]>([]);
-  const [consumoCodes, setConsumoCodes] = useState<Map<string, { atend: number; receita: number }>>(new Map());
+  const [unidadesList, setUnidadesList] = useState<Unidade[]>([]);
+  const [consumoCodes, setConsumoCodes] = useState<
+    Map<string, { atend: number; receita: number }>
+  >(new Map());
+  const [unitCodeMap, setUnitCodeMap] = useState<
+    Map<string, Map<string, { atend: number; receita: number }>>
+  >(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Unit view filters
+  const [ufFilter, setUfFilter] = useState<string[]>([]);
+  const [classFilter, setClassFilter] = useState<string[]>([]);
+  const [expandUnit, setExpandUnit] = useState(false);
+
+  // Coupon status filters
   const [formato, setFormato] = useState<string[]>([]);
   const [statusP, setStatusP] = useState<string[]>([]);
   const [expand, setExpand] = useState(false);
@@ -1139,7 +1193,13 @@ function CuradoriaView() {
     (async () => {
       setLoading(true);
       try {
-        // Fetch cupons_emitidos (paginated)
+        // unidades
+        const { data: uData, error: uErr } = await supabase
+          .from("unidades")
+          .select("nome");
+        if (uErr) throw uErr;
+
+        // cupons_emitidos (paginated)
         const emAll: CupomEmitido[] = [];
         {
           const pageSize = 1000;
@@ -1158,27 +1218,53 @@ function CuradoriaView() {
           }
         }
 
-        // Fetch consumo aggregate (codigo_cupom, comanda, valor_liquido, estabelecimento, data_hora_atendimento)
-        const codeMap = new Map<string, { comandas: Set<string>; receita: number }>();
+        // consumo aggregate: global by code + per-unit by code
+        const codeMap = new Map<
+          string,
+          { comandas: Set<string>; receita: number }
+        >();
+        const uMap = new Map<
+          string,
+          Map<string, { comandas: Set<string>; receita: number }>
+        >();
         {
           const pageSize = 1000;
           let from = 0;
           while (true) {
             const { data, error } = await supabase
               .from("consumo_cupons")
-              .select("codigo_cupom, comanda, valor_liquido, estabelecimento, data_hora_atendimento")
+              .select(
+                "codigo_cupom, comanda, valor_liquido, estabelecimento, data_hora_atendimento",
+              )
               .range(from, from + pageSize - 1);
             if (error) throw error;
             if (!data || data.length === 0) break;
             for (const r of data as ConsumoCupom[]) {
               const code = (r.codigo_cupom || "").trim().toUpperCase();
               if (!code) continue;
-              if (!codeMap.has(code)) codeMap.set(code, { comandas: new Set(), receita: 0 });
-              const agg = codeMap.get(code)!;
-              agg.receita += Number(r.valor_liquido) || 0;
-              if (r.comanda) {
-                const day = r.data_hora_atendimento ? isoDay(r.data_hora_atendimento) : "";
-                agg.comandas.add(`${r.estabelecimento ?? ""}||${r.comanda}||${day}`);
+              const day = r.data_hora_atendimento
+                ? isoDay(r.data_hora_atendimento)
+                : "";
+              const est = r.estabelecimento ?? "";
+              const comandaKey = r.comanda
+                ? `${est}||${r.comanda}||${day}`
+                : null;
+              const receita = Number(r.valor_liquido) || 0;
+
+              if (!codeMap.has(code))
+                codeMap.set(code, { comandas: new Set(), receita: 0 });
+              const g = codeMap.get(code)!;
+              g.receita += receita;
+              if (comandaKey) g.comandas.add(comandaKey);
+
+              if (est) {
+                if (!uMap.has(est)) uMap.set(est, new Map());
+                const inner = uMap.get(est)!;
+                if (!inner.has(code))
+                  inner.set(code, { comandas: new Set(), receita: 0 });
+                const gi = inner.get(code)!;
+                gi.receita += receita;
+                if (comandaKey) gi.comandas.add(comandaKey);
               }
             }
             if (data.length < pageSize) break;
@@ -1187,11 +1273,24 @@ function CuradoriaView() {
           }
         }
         const flat = new Map<string, { atend: number; receita: number }>();
-        for (const [k, v] of codeMap) flat.set(k, { atend: v.comandas.size, receita: v.receita });
+        for (const [k, v] of codeMap)
+          flat.set(k, { atend: v.comandas.size, receita: v.receita });
+        const flatUnit = new Map<
+          string,
+          Map<string, { atend: number; receita: number }>
+        >();
+        for (const [u, inner] of uMap) {
+          const m = new Map<string, { atend: number; receita: number }>();
+          for (const [c, v] of inner)
+            m.set(c, { atend: v.comandas.size, receita: v.receita });
+          flatUnit.set(u, m);
+        }
 
         if (alive) {
           setEmitidos(emAll);
+          setUnidadesList((uData as Unidade[]) || []);
           setConsumoCodes(flat);
+          setUnitCodeMap(flatUnit);
         }
       } catch (e: unknown) {
         if (alive) setError(e instanceof Error ? e.message : String(e));
@@ -1204,14 +1303,131 @@ function CuradoriaView() {
     };
   }, []);
 
-  const parseCodes = (raw: string | null): string[] => {
-    if (!raw) return [];
-    return raw
-      .split(",")
-      .map((s) => s.trim().toUpperCase())
-      .filter((s) => s && s !== "NÃO IDENTIFICADO" && s !== "NAO IDENTIFICADO");
+  // ---- Per-unit view ----
+  const unitRows = useMemo(() => {
+    // active influencers by unit
+    const activeByUnit = new Map<
+      string,
+      { count: number; codes: Set<string> }
+    >();
+    for (const e of emitidos) {
+      const status = (e.status_parceria || "").trim().toLowerCase();
+      if (status !== "ativa") continue;
+      const u = (e.unidade || "").trim();
+      if (!u) continue;
+      if (!activeByUnit.has(u))
+        activeByUnit.set(u, { count: 0, codes: new Set() });
+      const agg = activeByUnit.get(u)!;
+      agg.count += 1;
+      for (const c of parseCodes(e.codigo_cupom)) agg.codes.add(c);
+    }
+
+    return unidadesList.map((u) => {
+      const nome = u.nome;
+      const info = activeByUnit.get(nome);
+      const ativos = info?.count ?? 0;
+      const codes = info?.codes ?? new Set<string>();
+      const perU = unitCodeMap.get(nome) ?? new Map();
+      let receita = 0;
+      let atend = 0;
+      for (const c of codes) {
+        const hit = perU.get(c);
+        if (hit) {
+          receita += hit.receita;
+          atend += hit.atend;
+        }
+      }
+      const classificacao: Classificacao =
+        ativos === 0
+          ? "PRIORITARIO"
+          : receita <= 0
+            ? "ATENCAO"
+            : "SAUDAVEL";
+      return {
+        nome,
+        uf: extractUF(nome),
+        ativos,
+        receita,
+        atend,
+        classificacao,
+      };
+    });
+  }, [emitidos, unidadesList, unitCodeMap]);
+
+  const allUFs = useMemo(
+    () =>
+      Array.from(new Set(unitRows.map((r) => r.uf).filter((u) => u !== "—")))
+        .sort(),
+    [unitRows],
+  );
+  const allClasses: Classificacao[] = ["PRIORITARIO", "ATENCAO", "SAUDAVEL"];
+
+  const unitFiltered = useMemo(() => {
+    const uSet = ufFilter.length ? new Set(ufFilter) : null;
+    const cSet = classFilter.length ? new Set(classFilter) : null;
+    return unitRows.filter((r) => {
+      if (uSet && !uSet.has(r.uf)) return false;
+      if (cSet && !cSet.has(r.classificacao)) return false;
+      return true;
+    });
+  }, [unitRows, ufFilter, classFilter]);
+
+  const unitSorted = useMemo(() => {
+    const order: Record<Classificacao, number> = {
+      PRIORITARIO: 0,
+      ATENCAO: 1,
+      SAUDAVEL: 2,
+    };
+    return [...unitFiltered].sort((a, b) => {
+      const d = order[a.classificacao] - order[b.classificacao];
+      if (d !== 0) return d;
+      return b.receita - a.receita;
+    });
+  }, [unitFiltered]);
+
+  const unitSummary = useMemo(() => {
+    const total = unitFiltered.length;
+    let prio = 0,
+      atn = 0,
+      ok = 0;
+    for (const r of unitFiltered) {
+      if (r.classificacao === "PRIORITARIO") prio += 1;
+      else if (r.classificacao === "ATENCAO") atn += 1;
+      else ok += 1;
+    }
+    return { total, prio, atn, ok };
+  }, [unitFiltered]);
+
+  const unitBarData = useMemo(
+    () =>
+      unitFiltered
+        .filter((r) => r.receita > 0)
+        .sort((a, b) => b.receita - a.receita)
+        .slice(0, 20)
+        .map((r) => ({
+          nome: r.nome.replace(/^bLOw\s+/, ""),
+          receita: Number(r.receita.toFixed(2)),
+          classificacao: r.classificacao,
+        })),
+    [unitFiltered],
+  );
+
+  const exportUnitCSV = () => {
+    const out = unitSorted.map((r) => ({
+      unidade: r.nome,
+      uf: r.uf,
+      influenciadores_ativos: r.ativos,
+      atendimentos: r.atend,
+      receita: r.receita.toFixed(2).replace(".", ","),
+      classificacao: CLASS_META[r.classificacao].label,
+    }));
+    downloadCSV(
+      `blow_visao_unidades_${format(new Date(), "yyyyMMdd_HHmm")}.csv`,
+      toCSV(out),
+    );
   };
 
+  // ---- Coupon status view (existing) ----
   type Enriched = CupomEmitido & {
     codes: string[];
     convert: boolean;
@@ -1240,19 +1456,23 @@ function CuradoriaView() {
   const formatos = useMemo(
     () =>
       Array.from(
-        new Set(emitidos.map((e) => (e.formato_parceria || "").trim()).filter(Boolean)),
+        new Set(
+          emitidos.map((e) => (e.formato_parceria || "").trim()).filter(Boolean),
+        ),
       ).sort((a, b) => a.localeCompare(b, "pt-BR")),
     [emitidos],
   );
   const statuses = useMemo(
     () =>
       Array.from(
-        new Set(emitidos.map((e) => (e.status_parceria || "").trim()).filter(Boolean)),
+        new Set(
+          emitidos.map((e) => (e.status_parceria || "").trim()).filter(Boolean),
+        ),
       ).sort((a, b) => a.localeCompare(b, "pt-BR")),
     [emitidos],
   );
 
-  const filtered = useMemo(() => {
+  const filteredCoup = useMemo(() => {
     const fSet = formato.length ? new Set(formato) : null;
     const sSet = statusP.length ? new Set(statusP) : null;
     return enriched.filter((e) => {
@@ -1263,37 +1483,46 @@ function CuradoriaView() {
   }, [enriched, formato, statusP]);
 
   const summary = useMemo(() => {
-    const total = filtered.length;
-    const conv = filtered.filter((e) => e.convert).length;
+    const total = filteredCoup.length;
+    const conv = filteredCoup.filter((e) => e.convert).length;
     const nconv = total - conv;
     const rate = total ? (conv / total) * 100 : 0;
     return { total, conv, nconv, rate };
-  }, [filtered]);
+  }, [filteredCoup]);
 
   const sorted = useMemo(
     () =>
-      [...filtered].sort((a, b) => {
+      [...filteredCoup].sort((a, b) => {
         if (a.convert !== b.convert) return a.convert ? 1 : -1;
         return b.receita - a.receita;
       }),
-    [filtered],
+    [filteredCoup],
   );
 
   const byFormato = useMemo(() => {
-    const map = new Map<string, { formato: string; converteu: number; nao: number }>();
-    for (const e of filtered) {
+    const map = new Map<
+      string,
+      { formato: string; converteu: number; nao: number }
+    >();
+    for (const e of filteredCoup) {
       const key = (e.formato_parceria || "—").trim() || "—";
       if (!map.has(key)) map.set(key, { formato: key, converteu: 0, nao: 0 });
       const a = map.get(key)!;
       if (e.convert) a.converteu += 1;
       else a.nao += 1;
     }
-    return Array.from(map.values()).sort((a, b) => b.converteu + b.nao - (a.converteu + a.nao));
-  }, [filtered]);
+    return Array.from(map.values()).sort(
+      (a, b) => b.converteu + b.nao - (a.converteu + a.nao),
+    );
+  }, [filteredCoup]);
 
-  const clearFilters = () => {
+  const clearCoupFilters = () => {
     setFormato([]);
     setStatusP([]);
+  };
+  const clearUnitFilters = () => {
+    setUfFilter([]);
+    setClassFilter([]);
   };
 
   const exportCSV = () => {
@@ -1315,172 +1544,480 @@ function CuradoriaView() {
     );
   };
 
+  const classLabels = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const c of allClasses) m.set(c, CLASS_META[c].label);
+    return m;
+  }, []);
+
   return (
     <>
       <div className="mx-auto max-w-[1400px] px-6 pt-3 text-xs text-muted-foreground">
         {loading
           ? "Carregando dados…"
-          : `${num(emitidos.length)} cupons emitidos · ${num(consumoCodes.size)} códigos consumidos`}
+          : `${num(unidadesList.length)} unidades · ${num(emitidos.length)} cupons emitidos · ${num(consumoCodes.size)} códigos consumidos`}
       </div>
-      <main className="mx-auto max-w-[1400px] px-4 md:px-6 py-6 md:py-10 space-y-8">
+      <main className="mx-auto max-w-[1400px] px-4 md:px-6 py-6 md:py-10 space-y-10">
         {error && (
           <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             Erro ao carregar dados: {error}
           </div>
         )}
 
-        {/* Filters */}
-        <section className="card-blow p-4 md:p-6">
-          <div className="flex flex-wrap items-end gap-3 md:gap-4">
-            <MultiFilter
-              label="Formato de parceria"
-              options={formatos}
-              selected={formato}
-              onChange={setFormato}
-            />
-            <MultiFilter
-              label="Status da parceria"
-              options={statuses}
-              selected={statusP}
-              onChange={setStatusP}
-            />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={clearFilters}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <X className="mr-1 h-4 w-4" /> Limpar filtros
-            </Button>
-            <div className="ml-auto">
-              <Button
-                size="sm"
-                onClick={exportCSV}
-                disabled={sorted.length === 0}
-                className="bg-[color:var(--color-blow-green-dark)] hover:bg-[color:var(--color-blow-green-dark)]/90"
-              >
-                <Download className="mr-1 h-4 w-4" /> Exportar status
-              </Button>
-            </div>
-          </div>
-        </section>
-
-        {/* Summary cards */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <KPI label="Cupons emitidos" value={num(summary.total)} />
-          <KPI label="Converteram" value={num(summary.conv)} />
-          <KPI label="Não converteram" value={num(summary.nconv)} />
-          <KPI label="Taxa de conversão" value={`${summary.rate.toFixed(1).replace(".", ",")}%`} accent="terracotta" />
-        </section>
-
-        {/* Bar chart by formato */}
-        <section className="card-blow p-4 md:p-6">
-          <div className="mb-4">
-            <h2 className="text-xl md:text-2xl">Conversão por formato de parceria</h2>
-            <p className="text-sm text-muted-foreground">
-              Cupons que converteram vs. não converteram, agrupados pelo formato.
+        {/* ============ VISÃO POR UNIDADE ============ */}
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-[color:var(--color-blow-green-dark)]">
+              Visão por unidade
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Cobertura de influenciadores ativos e retorno gerado em cada loja
+              da rede.
             </p>
           </div>
-          <div className="h-[340px] w-full">
-            {byFormato.length === 0 ? (
-              <EmptyState loading={loading} />
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={byFormato} margin={{ top: 10, right: 20, bottom: 20, left: 10 }}>
-                  <CartesianGrid stroke={C.neutral} vertical={false} />
-                  <XAxis dataKey="formato" tick={{ fill: C.greenDark, fontSize: 11 }} stroke={C.neutralDark} />
-                  <YAxis tick={{ fill: C.greenDark, fontSize: 11 }} stroke={C.neutralDark} allowDecimals={false} />
-                  <Tooltip
-                    contentStyle={{
-                      background: "#fff",
-                      border: `1px solid ${C.neutral}`,
-                      borderRadius: 10,
-                      fontSize: 12,
-                    }}
-                  />
-                  <Bar dataKey="converteu" name="Converteu" fill={C.green} radius={[6, 6, 0, 0]} />
-                  <Bar dataKey="nao" name="Não converteu" fill={C.terracotta} radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </section>
 
-        {/* Table */}
-        <section className="card-blow p-4 md:p-6">
-          <div className="mb-4">
-            <h2 className="text-xl md:text-2xl">Status dos cupons emitidos</h2>
-            <p className="text-sm text-muted-foreground">
-              Ordenado com as parcerias que <strong>não converteram</strong> primeiro.
-            </p>
-          </div>
-          <div className="overflow-x-auto rounded-xl border border-border">
-            <table className="w-full text-sm">
-              <thead className="bg-[color:var(--color-blow-pink-light)]/60 text-[color:var(--color-blow-green-dark)]">
-                <tr>
-                  <Th>Influenciadora</Th>
-                  <Th>Unidade</Th>
-                  <Th>Código(s)</Th>
-                  <Th>Formato</Th>
-                  <Th>Status parceria</Th>
-                  <Th>Converteu?</Th>
-                  <Th className="text-right">Atend.</Th>
-                  <Th className="text-right">Receita</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {sorted.slice(0, expand ? undefined : 10).map((e, idx) => (
-                  <tr key={`${e.id ?? idx}-${e.codigo_cupom ?? ""}`} className="border-t border-border hover:bg-muted/50">
-                    <Td className="font-medium">{e.nome_influenciador || "—"}</Td>
-                    <Td>{e.unidade || "—"}</Td>
-                    <Td className="text-xs">{e.codigo_cupom || "—"}</Td>
-                    <Td>{e.formato_parceria || "—"}</Td>
-                    <Td>{e.status_parceria || "—"}</Td>
-                    <Td>
-                      <span
-                        className={cn(
-                          "inline-block px-2 py-0.5 rounded-full text-xs font-medium",
-                          e.convert
-                            ? "bg-[color:var(--color-blow-green-light)]/40 text-[color:var(--color-blow-green-dark)]"
-                            : "bg-[color:var(--color-blow-terracotta)]/15 text-[color:var(--color-blow-terracotta)]",
-                        )}
-                      >
-                        {e.convert ? "Sim" : "Não"}
-                      </span>
-                    </Td>
-                    <Td className="text-right tabular-nums">{num(e.atend)}</Td>
-                    <Td className="text-right tabular-nums">{brl(e.receita)}</Td>
-                  </tr>
-                ))}
-                {sorted.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="p-6 text-center text-muted-foreground text-sm">
-                      {loading ? "Carregando…" : "Sem cupons emitidos para os filtros atuais."}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          {sorted.length > 10 && (
-            <div className="mt-3 flex justify-center">
+          {/* Filters */}
+          <section className="card-blow p-4 md:p-6">
+            <div className="flex flex-wrap items-end gap-3 md:gap-4">
+              <MultiFilter
+                label="Estado (UF)"
+                options={allUFs}
+                selected={ufFilter}
+                onChange={setUfFilter}
+              />
+              <MultiFilter
+                label="Classificação"
+                options={allClasses}
+                optionLabels={classLabels}
+                selected={classFilter}
+                onChange={setClassFilter}
+              />
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setExpand((v) => !v)}
-                className="text-[color:var(--color-blow-green-dark)] hover:bg-[color:var(--color-blow-green-light)]/20"
+                onClick={clearUnitFilters}
+                className="text-muted-foreground hover:text-foreground"
               >
-                {expand ? "Ver menos" : "Ver mais"}
+                <X className="mr-1 h-4 w-4" /> Limpar filtros
               </Button>
+              <div className="ml-auto">
+                <Button
+                  size="sm"
+                  onClick={exportUnitCSV}
+                  disabled={unitSorted.length === 0}
+                  className="bg-[color:var(--color-blow-green-dark)] hover:bg-[color:var(--color-blow-green-dark)]/90"
+                >
+                  <Download className="mr-1 h-4 w-4" /> Exportar visão
+                </Button>
+              </div>
             </div>
-          )}
-        </section>
+          </section>
+
+          {/* Summary cards */}
+          <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <KPI label="Total de unidades" value={num(unitSummary.total)} />
+            <KPI
+              label="Prioritário"
+              value={num(unitSummary.prio)}
+              accent="terracotta"
+            />
+            <div className="card-blow p-5 md:p-6 relative overflow-hidden">
+              <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                Ponto de atenção
+              </div>
+              <div className="mt-3 text-3xl md:text-[2rem] font-semibold tabular-nums tracking-tight">
+                {num(unitSummary.atn)}
+              </div>
+              <div className="absolute right-0 bottom-0 h-1.5 w-24 bg-amber-500" />
+            </div>
+            <div className="card-blow p-5 md:p-6 relative overflow-hidden">
+              <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                Saudável
+              </div>
+              <div className="mt-3 text-3xl md:text-[2rem] font-semibold tabular-nums tracking-tight">
+                {num(unitSummary.ok)}
+              </div>
+              <div className="absolute right-0 bottom-0 h-1.5 w-24 bg-[color:var(--color-blow-green)]" />
+            </div>
+          </section>
+
+          {/* Bar chart */}
+          <section className="card-blow p-4 md:p-6">
+            <div className="mb-4 flex items-start justify-between gap-4 flex-wrap">
+              <div>
+                <h3 className="text-xl md:text-2xl">
+                  Retorno por unidade (top 20 com influência)
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Cores refletem a classificação da unidade.
+                </p>
+              </div>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <LegendDot color={CLASS_META.PRIORITARIO.color} label="Prioritário" />
+                <LegendDot color={CLASS_META.ATENCAO.color} label="Ponto de atenção" />
+                <LegendDot color={CLASS_META.SAUDAVEL.color} label="Saudável" />
+              </div>
+            </div>
+            <div className="h-[420px] w-full">
+              {unitBarData.length === 0 ? (
+                <EmptyState loading={loading} />
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={unitBarData}
+                    layout="vertical"
+                    margin={{ top: 10, right: 30, bottom: 10, left: 10 }}
+                  >
+                    <CartesianGrid stroke={C.neutral} horizontal={false} />
+                    <XAxis
+                      type="number"
+                      tick={{ fill: C.greenDark, fontSize: 11 }}
+                      stroke={C.neutralDark}
+                      tickFormatter={(v) =>
+                        v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)
+                      }
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="nome"
+                      width={230}
+                      tick={{ fill: C.greenDark, fontSize: 11 }}
+                      stroke={C.neutralDark}
+                    />
+                    <Tooltip
+                      formatter={(v: number) => brl(Number(v))}
+                      contentStyle={{
+                        background: "#fff",
+                        border: `1px solid ${C.neutral}`,
+                        borderRadius: 10,
+                        fontSize: 12,
+                      }}
+                    />
+                    <Bar dataKey="receita" radius={[0, 6, 6, 0]}>
+                      {unitBarData.map((d, i) => (
+                        <Cell
+                          key={i}
+                          fill={CLASS_META[d.classificacao].color}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </section>
+
+          {/* Table */}
+          <section className="card-blow p-4 md:p-6">
+            <div className="mb-4">
+              <h3 className="text-xl md:text-2xl">Visão por unidade</h3>
+              <p className="text-sm text-muted-foreground">
+                Prioritárias primeiro — unidades sem influenciador ativo.
+              </p>
+            </div>
+            <div className="overflow-x-auto rounded-xl border border-border">
+              <table className="w-full text-sm">
+                <thead className="bg-[color:var(--color-blow-pink-light)]/60 text-[color:var(--color-blow-green-dark)]">
+                  <tr>
+                    <Th>Unidade</Th>
+                    <Th>UF</Th>
+                    <Th className="text-right">Influ. ativos</Th>
+                    <Th className="text-right">Atend.</Th>
+                    <Th className="text-right">Retorno</Th>
+                    <Th>Classificação</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {unitSorted
+                    .slice(0, expandUnit ? undefined : 10)
+                    .map((r) => {
+                      const meta = CLASS_META[r.classificacao];
+                      return (
+                        <tr
+                          key={r.nome}
+                          className="border-t border-border hover:bg-muted/50"
+                        >
+                          <Td className="font-medium">{r.nome}</Td>
+                          <Td className="text-xs">{r.uf}</Td>
+                          <Td className="text-right tabular-nums">
+                            {num(r.ativos)}
+                          </Td>
+                          <Td className="text-right tabular-nums">
+                            {num(r.atend)}
+                          </Td>
+                          <Td className="text-right tabular-nums">
+                            {brl(r.receita)}
+                          </Td>
+                          <Td>
+                            <span
+                              className={cn(
+                                "inline-block px-2 py-0.5 rounded-full text-xs font-medium",
+                                meta.bg,
+                                meta.text,
+                              )}
+                            >
+                              {meta.label}
+                            </span>
+                          </Td>
+                        </tr>
+                      );
+                    })}
+                  {unitSorted.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={6}
+                        className="p-6 text-center text-muted-foreground text-sm"
+                      >
+                        {loading
+                          ? "Carregando…"
+                          : "Sem unidades para os filtros atuais."}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {unitSorted.length > 10 && (
+              <div className="mt-3 flex justify-center">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setExpandUnit((v) => !v)}
+                  className="text-[color:var(--color-blow-green-dark)] hover:bg-[color:var(--color-blow-green-light)]/20"
+                >
+                  {expandUnit ? "Ver menos" : "Ver mais"}
+                </Button>
+              </div>
+            )}
+          </section>
+        </div>
+
+        {/* ============ STATUS DOS CUPONS POR INFLUENCIADOR ============ */}
+        <div className="space-y-8 pt-6 border-t border-border">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-[color:var(--color-blow-green-dark)]">
+              Status dos cupons por influenciador
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Cruzamento entre cupons emitidos e cupons efetivamente utilizados.
+            </p>
+          </div>
+
+          {/* Filters */}
+          <section className="card-blow p-4 md:p-6">
+            <div className="flex flex-wrap items-end gap-3 md:gap-4">
+              <MultiFilter
+                label="Formato de parceria"
+                options={formatos}
+                selected={formato}
+                onChange={setFormato}
+              />
+              <MultiFilter
+                label="Status da parceria"
+                options={statuses}
+                selected={statusP}
+                onChange={setStatusP}
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearCoupFilters}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="mr-1 h-4 w-4" /> Limpar filtros
+              </Button>
+              <div className="ml-auto">
+                <Button
+                  size="sm"
+                  onClick={exportCSV}
+                  disabled={sorted.length === 0}
+                  className="bg-[color:var(--color-blow-green-dark)] hover:bg-[color:var(--color-blow-green-dark)]/90"
+                >
+                  <Download className="mr-1 h-4 w-4" /> Exportar status
+                </Button>
+              </div>
+            </div>
+          </section>
+
+          {/* Summary cards */}
+          <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <KPI label="Cupons emitidos" value={num(summary.total)} />
+            <KPI label="Converteram" value={num(summary.conv)} />
+            <KPI label="Não converteram" value={num(summary.nconv)} />
+            <KPI
+              label="Taxa de conversão"
+              value={`${summary.rate.toFixed(1).replace(".", ",")}%`}
+              accent="terracotta"
+            />
+          </section>
+
+          {/* Bar chart by formato */}
+          <section className="card-blow p-4 md:p-6">
+            <div className="mb-4">
+              <h3 className="text-xl md:text-2xl">
+                Conversão por formato de parceria
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Cupons que converteram vs. não converteram, agrupados pelo
+                formato.
+              </p>
+            </div>
+            <div className="h-[340px] w-full">
+              {byFormato.length === 0 ? (
+                <EmptyState loading={loading} />
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={byFormato}
+                    margin={{ top: 10, right: 20, bottom: 20, left: 10 }}
+                  >
+                    <CartesianGrid stroke={C.neutral} vertical={false} />
+                    <XAxis
+                      dataKey="formato"
+                      tick={{ fill: C.greenDark, fontSize: 11 }}
+                      stroke={C.neutralDark}
+                    />
+                    <YAxis
+                      tick={{ fill: C.greenDark, fontSize: 11 }}
+                      stroke={C.neutralDark}
+                      allowDecimals={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        background: "#fff",
+                        border: `1px solid ${C.neutral}`,
+                        borderRadius: 10,
+                        fontSize: 12,
+                      }}
+                    />
+                    <Bar
+                      dataKey="converteu"
+                      name="Converteu"
+                      fill={C.green}
+                      radius={[6, 6, 0, 0]}
+                    />
+                    <Bar
+                      dataKey="nao"
+                      name="Não converteu"
+                      fill={C.terracotta}
+                      radius={[6, 6, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </section>
+
+          {/* Table */}
+          <section className="card-blow p-4 md:p-6">
+            <div className="mb-4">
+              <h3 className="text-xl md:text-2xl">
+                Status dos cupons emitidos
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Ordenado com as parcerias que <strong>não converteram</strong>{" "}
+                primeiro.
+              </p>
+            </div>
+            <div className="overflow-x-auto rounded-xl border border-border">
+              <table className="w-full text-sm">
+                <thead className="bg-[color:var(--color-blow-pink-light)]/60 text-[color:var(--color-blow-green-dark)]">
+                  <tr>
+                    <Th>Influenciadora</Th>
+                    <Th>Unidade</Th>
+                    <Th>Código(s)</Th>
+                    <Th>Formato</Th>
+                    <Th>Status parceria</Th>
+                    <Th>Converteu?</Th>
+                    <Th className="text-right">Atend.</Th>
+                    <Th className="text-right">Receita</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sorted
+                    .slice(0, expand ? undefined : 10)
+                    .map((e, idx) => (
+                      <tr
+                        key={`${e.id ?? idx}-${e.codigo_cupom ?? ""}`}
+                        className="border-t border-border hover:bg-muted/50"
+                      >
+                        <Td className="font-medium">
+                          {e.nome_influenciador || "—"}
+                        </Td>
+                        <Td>{e.unidade || "—"}</Td>
+                        <Td className="text-xs">{e.codigo_cupom || "—"}</Td>
+                        <Td>{e.formato_parceria || "—"}</Td>
+                        <Td>{e.status_parceria || "—"}</Td>
+                        <Td>
+                          <span
+                            className={cn(
+                              "inline-block px-2 py-0.5 rounded-full text-xs font-medium",
+                              e.convert
+                                ? "bg-[color:var(--color-blow-green-light)]/40 text-[color:var(--color-blow-green-dark)]"
+                                : "bg-[color:var(--color-blow-terracotta)]/15 text-[color:var(--color-blow-terracotta)]",
+                            )}
+                          >
+                            {e.convert ? "Sim" : "Não"}
+                          </span>
+                        </Td>
+                        <Td className="text-right tabular-nums">
+                          {num(e.atend)}
+                        </Td>
+                        <Td className="text-right tabular-nums">
+                          {brl(e.receita)}
+                        </Td>
+                      </tr>
+                    ))}
+                  {sorted.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={8}
+                        className="p-6 text-center text-muted-foreground text-sm"
+                      >
+                        {loading
+                          ? "Carregando…"
+                          : "Sem cupons emitidos para os filtros atuais."}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {sorted.length > 10 && (
+              <div className="mt-3 flex justify-center">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setExpand((v) => !v)}
+                  className="text-[color:var(--color-blow-green-dark)] hover:bg-[color:var(--color-blow-green-light)]/20"
+                >
+                  {expand ? "Ver menos" : "Ver mais"}
+                </Button>
+              </div>
+            )}
+          </section>
+        </div>
 
         <footer className="pt-4 pb-8 text-center text-xs text-muted-foreground">
-          bLOw · Curadoria de parcerias ·{" "}
-          {loading ? "carregando…" : `${num(sorted.length)} cupons`}
+          bLOw · Influenciadores ·{" "}
+          {loading
+            ? "carregando…"
+            : `${num(unitRows.length)} unidades · ${num(sorted.length)} cupons`}
         </footer>
       </main>
     </>
   );
 }
+
+function LegendDot({ color, label }: { color: string; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span
+        className="inline-block h-2.5 w-2.5 rounded-full"
+        style={{ backgroundColor: color }}
+      />
+      {label}
+    </span>
+  );
+}
+
