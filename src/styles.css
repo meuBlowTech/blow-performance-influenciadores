@@ -47,7 +47,7 @@
   --color-blow-neutral: var(--blow-neutral);
   --color-blow-neutral-dark: var(--blow-neutral-dark);
 
-  --font-display: "Cormorant Garamond", Georgia, serif;
+  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
