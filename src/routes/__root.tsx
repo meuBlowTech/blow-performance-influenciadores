@@ -91,6 +91,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "bLOw — Dashboard de Performance" },
+      { name: "description", content: "Dashboard de performance de marketing de influência para rede de escovarias bLOw." },
+      { property: "og:description", content: "Dashboard de performance de marketing de influência para rede de escovarias bLOw." },
+      { name: "twitter:description", content: "Dashboard de performance de marketing de influência para rede de escovarias bLOw." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6260ecf6-a8bb-46d6-9175-35c0c1c6d3b1/id-preview-f589a69a--2a388fa2-7b4c-4178-9768-8addfb16c840.lovable.app-1783000122881.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6260ecf6-a8bb-46d6-9175-35c0c1c6d3b1/id-preview-f589a69a--2a388fa2-7b4c-4178-9768-8addfb16c840.lovable.app-1783000122881.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
