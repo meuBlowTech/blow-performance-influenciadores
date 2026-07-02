@@ -660,6 +660,135 @@ function Dashboard() {
           </div>
         </section>
 
+        {/* Influenciadoras */}
+        <section className="card-blow p-4 md:p-6">
+          <div className="mb-4">
+            <h2 className="text-xl md:text-2xl">Desempenho por influenciadora</h2>
+            <p className="text-sm text-muted-foreground">
+              Cada cupom representa uma influenciadora. Respeita filtros de período e unidade.
+            </p>
+          </div>
+          <div className="overflow-x-auto rounded-xl border border-border mb-6">
+            <table className="w-full text-sm">
+              <thead className="bg-[color:var(--color-blow-pink-light)]/60 text-[color:var(--color-blow-green-dark)]">
+                <tr>
+                  <Th>Influenciadora</Th>
+                  <Th className="text-right">Nº cupons utilizados</Th>
+                  <Th className="text-right">Receita total</Th>
+                  <Th className="text-right">Ticket médio</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {influencerRanking.map((r) => (
+                  <tr key={r.codigo} className="border-t border-border hover:bg-muted/50">
+                    <Td>
+                      <div className="font-medium">{r.nome || "—"}</div>
+                      <div className="text-xs text-muted-foreground">{r.codigo}</div>
+                    </Td>
+                    <Td className="text-right tabular-nums">{num(r.atendimentos)}</Td>
+                    <Td className="text-right tabular-nums">{brl(r.receita)}</Td>
+                    <Td className="text-right tabular-nums">{brl(r.ticket)}</Td>
+                  </tr>
+                ))}
+                {influencerRanking.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="p-6 text-center text-muted-foreground text-sm">
+                      Sem dados no período.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
+            <div>
+              <h3 className="text-lg">Faturamento por influenciadora ao longo do tempo</h3>
+              <p className="text-sm text-muted-foreground">
+                Padrão: top 5 por receita. Ajuste no seletor.
+              </p>
+            </div>
+            <div className="flex items-end gap-3">
+              <MultiFilter
+                label="Influenciadoras"
+                options={influencerRanking.map((r) => r.codigo)}
+                optionLabels={influencerLabels}
+                selected={activeInfluencers}
+                onChange={(v) => setSelectedInfluencers(v)}
+              />
+              <div className="inline-flex rounded-full border border-border bg-muted p-1">
+                {(["dia", "semana"] as const).map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => setChartModeInf(m)}
+                    className={cn(
+                      "px-4 py-1.5 text-xs font-medium rounded-full transition-colors",
+                      chartModeInf === m
+                        ? "bg-[color:var(--color-blow-green-dark)] text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {m === "dia" ? "Diário" : "Semanal"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="h-[360px] w-full">
+            {influencerTimeSeries.length === 0 || activeInfluencers.length === 0 ? (
+              <EmptyState loading={loading} />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={influencerTimeSeries}
+                  margin={{ top: 10, right: 20, bottom: 20, left: 10 }}
+                >
+                  <CartesianGrid stroke={C.neutral} vertical={false} />
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fill: C.greenDark, fontSize: 11 }}
+                    stroke={C.neutralDark}
+                    minTickGap={20}
+                  />
+                  <YAxis
+                    tick={{ fill: C.greenDark, fontSize: 11 }}
+                    stroke={C.neutralDark}
+                    tickFormatter={(v) =>
+                      v >= 1000 ? `R$ ${(v / 1000).toFixed(0)}k` : `R$ ${v}`
+                    }
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: "#fff",
+                      border: `1px solid ${C.neutral}`,
+                      borderRadius: 10,
+                      fontSize: 12,
+                    }}
+                    labelStyle={{ color: C.greenDark, fontWeight: 600 }}
+                    formatter={(v: number, name: string) => [
+                      brl(v),
+                      influencerLabels.get(name) || name,
+                    ]}
+                  />
+                  {activeInfluencers.map((code, i) => (
+                    <Line
+                      key={code}
+                      type="monotone"
+                      dataKey={code}
+                      name={code}
+                      stroke={BAR_PALETTE[i % BAR_PALETTE.length]}
+                      strokeWidth={2}
+                      dot={false}
+                      activeDot={{ r: 4 }}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </section>
+
         {/* Unidades */}
         <section className="card-blow p-4 md:p-6">
           <div className="mb-4">
