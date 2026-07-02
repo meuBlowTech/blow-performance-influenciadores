@@ -815,7 +815,7 @@ function Dashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {unidadesData.map((r) => (
+                    {unidadesData.slice(0, expandUnidades ? undefined : 10).map((r) => (
                       <tr
                         key={r.unidade}
                         className="border-t border-border hover:bg-muted/50"
@@ -845,6 +845,19 @@ function Dashboard() {
                   </tbody>
                 </table>
               </div>
+              {unidadesData.length > 10 && (
+                <div className="mt-3 flex justify-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setExpandUnidades((v) => !v)}
+                    className="text-[color:var(--color-blow-green-dark)] hover:bg-[color:var(--color-blow-green-light)]/20"
+                  >
+                    {expandUnidades ? "Ver menos" : "Ver mais"}
+                  </Button>
+                </div>
+              )}
+
             </div>
           </div>
         </section>
