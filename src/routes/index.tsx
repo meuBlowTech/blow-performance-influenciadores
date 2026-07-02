@@ -997,17 +997,20 @@ function DateRange({
 function MultiFilter({
   label,
   options,
+  optionLabels,
   selected,
   onChange,
 }: {
   label: string;
   options: string[];
+  optionLabels?: Map<string, string>;
   selected: string[];
   onChange: (v: string[]) => void;
 }) {
   const [query, setQuery] = useState("");
+  const labelFor = (o: string) => optionLabels?.get(o) ?? o;
   const shown = query
-    ? options.filter((o) => o.toLowerCase().includes(query.toLowerCase()))
+    ? options.filter((o) => labelFor(o).toLowerCase().includes(query.toLowerCase()))
     : options;
   const toggle = (v: string) => {
     onChange(selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v]);
