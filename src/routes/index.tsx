@@ -75,6 +75,49 @@ const BAR_PALETTE = [
 type Row = ConsumoCupom;
 
 function Dashboard() {
+  const [activeTab, setActiveTab] = useState<"performance" | "curadoria">("performance");
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border bg-[color:var(--color-blow-green-dark)] text-primary-foreground">
+        <div className="mx-auto max-w-[1400px] px-6 pt-6 md:pt-8">
+          <div className="flex items-baseline gap-3">
+            <h1 className="text-3xl md:text-4xl font-medium tracking-tight">
+              b<span className="italic">L</span>Ow
+            </h1>
+            <span className="text-xs md:text-sm uppercase tracking-[0.25em] text-[color:var(--color-blow-green-light)]">
+              Performance de influência
+            </span>
+          </div>
+          <p className="mt-2 text-sm text-[color:var(--color-blow-pink-light)]/90">
+            Acompanhe receita, cupons e curadoria de parcerias em tempo real.
+          </p>
+          <nav className="mt-6 flex gap-1 -mb-px">
+            {([
+              { id: "performance", label: "Performance" },
+              { id: "curadoria", label: "Curadoria" },
+            ] as const).map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setActiveTab(t.id)}
+                className={cn(
+                  "px-5 py-2.5 text-sm font-medium rounded-t-lg border border-b-0 transition-colors",
+                  activeTab === t.id
+                    ? "bg-background text-[color:var(--color-blow-green-dark)] border-border"
+                    : "bg-transparent text-[color:var(--color-blow-pink-light)]/80 border-transparent hover:text-primary-foreground",
+                )}
+              >
+                {t.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+      </header>
+      {activeTab === "performance" ? <PerformanceView /> : <CuradoriaView />}
+    </div>
+  );
+}
+
+function PerformanceView() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
