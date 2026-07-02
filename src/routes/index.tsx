@@ -85,6 +85,8 @@ function Dashboard() {
   const [unidades, setUnidades] = useState<string[]>([]);
   const [cupons, setCupons] = useState<string[]>([]);
   const [chartMode, setChartMode] = useState<"dia" | "semana">("dia");
+  const [chartModeInf, setChartModeInf] = useState<"dia" | "semana">("dia");
+  const [selectedInfluencers, setSelectedInfluencers] = useState<string[] | null>(null);
 
   useEffect(() => {
     let alive = true;
