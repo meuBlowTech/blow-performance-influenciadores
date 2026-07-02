@@ -416,32 +416,13 @@ function PerformanceView() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-[color:var(--color-blow-green-dark)] text-primary-foreground">
-        <div className="mx-auto max-w-[1400px] px-6 py-6 md:py-8">
-          <div className="flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
-            <div>
-              <div className="flex items-baseline gap-3">
-                <h1 className="text-3xl md:text-4xl font-medium tracking-tight">
-                  b<span className="italic">L</span>Ow
-                </h1>
-                <span className="text-xs md:text-sm uppercase tracking-[0.25em] text-[color:var(--color-blow-green-light)]">
-                  Performance de influência
-                </span>
-              </div>
-              <p className="mt-2 text-sm text-[color:var(--color-blow-pink-light)]/90">
-                Acompanhe receita, cupons e desempenho por unidade em tempo real.
-              </p>
-            </div>
-            <div className="mt-4 md:mt-0 text-xs text-[color:var(--color-blow-green-light)]">
-              {loading
-                ? "Carregando dados…"
-                : `${num(rows.length)} linhas · ${num(allUnidades.length)} unidades · ${num(allCupons.length)} cupons`}
-            </div>
-          </div>
-        </div>
-      </header>
+    <>
+      <div className="mx-auto max-w-[1400px] px-6 pt-3 text-xs text-muted-foreground">
+        {loading
+          ? "Carregando dados…"
+          : `${num(rows.length)} linhas · ${num(allUnidades.length)} unidades · ${num(allCupons.length)} cupons`}
+      </div>
+
 
       <main className="mx-auto max-w-[1400px] px-4 md:px-6 py-6 md:py-10 space-y-8">
         {error && (
