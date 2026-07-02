@@ -1067,7 +1067,7 @@ function MultiFilter({
                     checked={selected.includes(o)}
                     onCheckedChange={() => toggle(o)}
                   />
-                  <span className="truncate">{o}</span>
+                  <span className="truncate">{labelFor(o)}</span>
                 </label>
               ))}
             </div>
