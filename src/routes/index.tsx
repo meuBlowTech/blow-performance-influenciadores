@@ -891,7 +891,7 @@ function PerformanceView() {
           {loading ? "carregando…" : `${num(filtered.length)} linhas filtradas`}
         </footer>
       </main>
-    </div>
+    </>
   );
 }
 
