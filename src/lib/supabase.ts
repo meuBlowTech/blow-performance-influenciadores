@@ -26,3 +26,14 @@ export type ConsumoCupom = {
   tipo_item: string | null;
   data_extracao: string | null;
 };
+
+export type CupomEmitido = {
+  id?: number | string | null;
+  nome_influenciador: string | null;
+  unidade: string | null;
+  codigo_cupom: string | null;
+  formato_parceria: string | null;
+  status_parceria: string | null;
+  data_inicio: string | null;
+  data_validade: string | null;
+};
