@@ -75,7 +75,7 @@ const BAR_PALETTE = [
 type Row = ConsumoCupom;
 
 function Dashboard() {
-  const [activeTab, setActiveTab] = useState<"performance" | "curadoria">("performance");
+  const [activeTab, setActiveTab] = useState<"performance" | "influenciadores">("performance");
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-[color:var(--color-blow-green-dark)] text-primary-foreground">
@@ -94,7 +94,7 @@ function Dashboard() {
           <nav className="mt-6 flex gap-1 -mb-px">
             {([
               { id: "performance", label: "Performance" },
-              { id: "curadoria", label: "Curadoria" },
+              { id: "influenciadores", label: "Influenciadores" },
             ] as const).map((t) => (
               <button
                 key={t.id}
