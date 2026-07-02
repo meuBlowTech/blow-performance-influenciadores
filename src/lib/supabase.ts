@@ -27,6 +27,10 @@ export type ConsumoCupom = {
   data_extracao: string | null;
 };
 
+export type Unidade = {
+  nome: string;
+};
+
 export type CupomEmitido = {
   id?: number | string | null;
   nome_influenciador: string | null;
