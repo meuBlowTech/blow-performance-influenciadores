@@ -1122,3 +1122,365 @@ function EmptyState({ loading }: { loading: boolean }) {
     </div>
   );
 }
+
+/* ---------- Curadoria ---------- */
+
+function CuradoriaView() {
+  const [emitidos, setEmitidos] = useState<CupomEmitido[]>([]);
+  const [consumoCodes, setConsumoCodes] = useState<Map<string, { atend: number; receita: number }>>(new Map());
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [formato, setFormato] = useState<string[]>([]);
+  const [statusP, setStatusP] = useState<string[]>([]);
+  const [expand, setExpand] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      setLoading(true);
+      try {
+        // Fetch cupons_emitidos (paginated)
+        const emAll: CupomEmitido[] = [];
+        {
+          const pageSize = 1000;
+          let from = 0;
+          while (true) {
+            const { data, error } = await supabase
+              .from("cupons_emitidos")
+              .select("*")
+              .range(from, from + pageSize - 1);
+            if (error) throw error;
+            if (!data || data.length === 0) break;
+            emAll.push(...(data as CupomEmitido[]));
+            if (data.length < pageSize) break;
+            from += pageSize;
+            if (emAll.length > 50_000) break;
+          }
+        }
+
+        // Fetch consumo aggregate (codigo_cupom, comanda, valor_liquido, estabelecimento, data_hora_atendimento)
+        const codeMap = new Map<string, { comandas: Set<string>; receita: number }>();
+        {
+          const pageSize = 1000;
+          let from = 0;
+          while (true) {
+            const { data, error } = await supabase
+              .from("consumo_cupons")
+              .select("codigo_cupom, comanda, valor_liquido, estabelecimento, data_hora_atendimento")
+              .range(from, from + pageSize - 1);
+            if (error) throw error;
+            if (!data || data.length === 0) break;
+            for (const r of data as ConsumoCupom[]) {
+              const code = (r.codigo_cupom || "").trim().toUpperCase();
+              if (!code) continue;
+              if (!codeMap.has(code)) codeMap.set(code, { comandas: new Set(), receita: 0 });
+              const agg = codeMap.get(code)!;
+              agg.receita += Number(r.valor_liquido) || 0;
+              if (r.comanda) {
+                const day = r.data_hora_atendimento ? isoDay(r.data_hora_atendimento) : "";
+                agg.comandas.add(`${r.estabelecimento ?? ""}||${r.comanda}||${day}`);
+              }
+            }
+            if (data.length < pageSize) break;
+            from += pageSize;
+            if (from > 200_000) break;
+          }
+        }
+        const flat = new Map<string, { atend: number; receita: number }>();
+        for (const [k, v] of codeMap) flat.set(k, { atend: v.comandas.size, receita: v.receita });
+
+        if (alive) {
+          setEmitidos(emAll);
+          setConsumoCodes(flat);
+        }
+      } catch (e: unknown) {
+        if (alive) setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const parseCodes = (raw: string | null): string[] => {
+    if (!raw) return [];
+    return raw
+      .split(",")
+      .map((s) => s.trim().toUpperCase())
+      .filter((s) => s && s !== "NÃO IDENTIFICADO" && s !== "NAO IDENTIFICADO");
+  };
+
+  type Enriched = CupomEmitido & {
+    codes: string[];
+    convert: boolean;
+    atend: number;
+    receita: number;
+  };
+
+  const enriched: Enriched[] = useMemo(() => {
+    return emitidos.map((e) => {
+      const codes = parseCodes(e.codigo_cupom);
+      let atend = 0;
+      let receita = 0;
+      let convert = false;
+      for (const c of codes) {
+        const hit = consumoCodes.get(c);
+        if (hit) {
+          convert = true;
+          atend += hit.atend;
+          receita += hit.receita;
+        }
+      }
+      return { ...e, codes, convert, atend, receita };
+    });
+  }, [emitidos, consumoCodes]);
+
+  const formatos = useMemo(
+    () =>
+      Array.from(
+        new Set(emitidos.map((e) => (e.formato_parceria || "").trim()).filter(Boolean)),
+      ).sort((a, b) => a.localeCompare(b, "pt-BR")),
+    [emitidos],
+  );
+  const statuses = useMemo(
+    () =>
+      Array.from(
+        new Set(emitidos.map((e) => (e.status_parceria || "").trim()).filter(Boolean)),
+      ).sort((a, b) => a.localeCompare(b, "pt-BR")),
+    [emitidos],
+  );
+
+  const filtered = useMemo(() => {
+    const fSet = formato.length ? new Set(formato) : null;
+    const sSet = statusP.length ? new Set(statusP) : null;
+    return enriched.filter((e) => {
+      if (fSet && !fSet.has((e.formato_parceria || "").trim())) return false;
+      if (sSet && !sSet.has((e.status_parceria || "").trim())) return false;
+      return true;
+    });
+  }, [enriched, formato, statusP]);
+
+  const summary = useMemo(() => {
+    const total = filtered.length;
+    const conv = filtered.filter((e) => e.convert).length;
+    const nconv = total - conv;
+    const rate = total ? (conv / total) * 100 : 0;
+    return { total, conv, nconv, rate };
+  }, [filtered]);
+
+  const sorted = useMemo(
+    () =>
+      [...filtered].sort((a, b) => {
+        if (a.convert !== b.convert) return a.convert ? 1 : -1;
+        return b.receita - a.receita;
+      }),
+    [filtered],
+  );
+
+  const byFormato = useMemo(() => {
+    const map = new Map<string, { formato: string; converteu: number; nao: number }>();
+    for (const e of filtered) {
+      const key = (e.formato_parceria || "—").trim() || "—";
+      if (!map.has(key)) map.set(key, { formato: key, converteu: 0, nao: 0 });
+      const a = map.get(key)!;
+      if (e.convert) a.converteu += 1;
+      else a.nao += 1;
+    }
+    return Array.from(map.values()).sort((a, b) => b.converteu + b.nao - (a.converteu + a.nao));
+  }, [filtered]);
+
+  const clearFilters = () => {
+    setFormato([]);
+    setStatusP([]);
+  };
+
+  const exportCSV = () => {
+    const out = sorted.map((e) => ({
+      nome_influenciador: e.nome_influenciador ?? "",
+      unidade: e.unidade ?? "",
+      codigo_cupom: e.codigo_cupom ?? "",
+      formato_parceria: e.formato_parceria ?? "",
+      status_parceria: e.status_parceria ?? "",
+      data_inicio: e.data_inicio ?? "",
+      data_validade: e.data_validade ?? "",
+      converteu: e.convert ? "Sim" : "Não",
+      atendimentos: e.atend,
+      receita: e.receita.toFixed(2).replace(".", ","),
+    }));
+    downloadCSV(
+      `blow_curadoria_${format(new Date(), "yyyyMMdd_HHmm")}.csv`,
+      toCSV(out),
+    );
+  };
+
+  return (
+    <>
+      <div className="mx-auto max-w-[1400px] px-6 pt-3 text-xs text-muted-foreground">
+        {loading
+          ? "Carregando dados…"
+          : `${num(emitidos.length)} cupons emitidos · ${num(consumoCodes.size)} códigos consumidos`}
+      </div>
+      <main className="mx-auto max-w-[1400px] px-4 md:px-6 py-6 md:py-10 space-y-8">
+        {error && (
+          <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            Erro ao carregar dados: {error}
+          </div>
+        )}
+
+        {/* Filters */}
+        <section className="card-blow p-4 md:p-6">
+          <div className="flex flex-wrap items-end gap-3 md:gap-4">
+            <MultiFilter
+              label="Formato de parceria"
+              options={formatos}
+              selected={formato}
+              onChange={setFormato}
+            />
+            <MultiFilter
+              label="Status da parceria"
+              options={statuses}
+              selected={statusP}
+              onChange={setStatusP}
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearFilters}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <X className="mr-1 h-4 w-4" /> Limpar filtros
+            </Button>
+            <div className="ml-auto">
+              <Button
+                size="sm"
+                onClick={exportCSV}
+                disabled={sorted.length === 0}
+                className="bg-[color:var(--color-blow-green-dark)] hover:bg-[color:var(--color-blow-green-dark)]/90"
+              >
+                <Download className="mr-1 h-4 w-4" /> Exportar status
+              </Button>
+            </div>
+          </div>
+        </section>
+
+        {/* Summary cards */}
+        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <KPI label="Cupons emitidos" value={num(summary.total)} />
+          <KPI label="Converteram" value={num(summary.conv)} />
+          <KPI label="Não converteram" value={num(summary.nconv)} />
+          <KPI label="Taxa de conversão" value={`${summary.rate.toFixed(1).replace(".", ",")}%`} accent="terracotta" />
+        </section>
+
+        {/* Bar chart by formato */}
+        <section className="card-blow p-4 md:p-6">
+          <div className="mb-4">
+            <h2 className="text-xl md:text-2xl">Conversão por formato de parceria</h2>
+            <p className="text-sm text-muted-foreground">
+              Cupons que converteram vs. não converteram, agrupados pelo formato.
+            </p>
+          </div>
+          <div className="h-[340px] w-full">
+            {byFormato.length === 0 ? (
+              <EmptyState loading={loading} />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={byFormato} margin={{ top: 10, right: 20, bottom: 20, left: 10 }}>
+                  <CartesianGrid stroke={C.neutral} vertical={false} />
+                  <XAxis dataKey="formato" tick={{ fill: C.greenDark, fontSize: 11 }} stroke={C.neutralDark} />
+                  <YAxis tick={{ fill: C.greenDark, fontSize: 11 }} stroke={C.neutralDark} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={{
+                      background: "#fff",
+                      border: `1px solid ${C.neutral}`,
+                      borderRadius: 10,
+                      fontSize: 12,
+                    }}
+                  />
+                  <Bar dataKey="converteu" name="Converteu" fill={C.green} radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="nao" name="Não converteu" fill={C.terracotta} radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </section>
+
+        {/* Table */}
+        <section className="card-blow p-4 md:p-6">
+          <div className="mb-4">
+            <h2 className="text-xl md:text-2xl">Status dos cupons emitidos</h2>
+            <p className="text-sm text-muted-foreground">
+              Ordenado com as parcerias que <strong>não converteram</strong> primeiro.
+            </p>
+          </div>
+          <div className="overflow-x-auto rounded-xl border border-border">
+            <table className="w-full text-sm">
+              <thead className="bg-[color:var(--color-blow-pink-light)]/60 text-[color:var(--color-blow-green-dark)]">
+                <tr>
+                  <Th>Influenciadora</Th>
+                  <Th>Unidade</Th>
+                  <Th>Código(s)</Th>
+                  <Th>Formato</Th>
+                  <Th>Status parceria</Th>
+                  <Th>Converteu?</Th>
+                  <Th className="text-right">Atend.</Th>
+                  <Th className="text-right">Receita</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {sorted.slice(0, expand ? undefined : 10).map((e, idx) => (
+                  <tr key={`${e.id ?? idx}-${e.codigo_cupom ?? ""}`} className="border-t border-border hover:bg-muted/50">
+                    <Td className="font-medium">{e.nome_influenciador || "—"}</Td>
+                    <Td>{e.unidade || "—"}</Td>
+                    <Td className="text-xs">{e.codigo_cupom || "—"}</Td>
+                    <Td>{e.formato_parceria || "—"}</Td>
+                    <Td>{e.status_parceria || "—"}</Td>
+                    <Td>
+                      <span
+                        className={cn(
+                          "inline-block px-2 py-0.5 rounded-full text-xs font-medium",
+                          e.convert
+                            ? "bg-[color:var(--color-blow-green-light)]/40 text-[color:var(--color-blow-green-dark)]"
+                            : "bg-[color:var(--color-blow-terracotta)]/15 text-[color:var(--color-blow-terracotta)]",
+                        )}
+                      >
+                        {e.convert ? "Sim" : "Não"}
+                      </span>
+                    </Td>
+                    <Td className="text-right tabular-nums">{num(e.atend)}</Td>
+                    <Td className="text-right tabular-nums">{brl(e.receita)}</Td>
+                  </tr>
+                ))}
+                {sorted.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="p-6 text-center text-muted-foreground text-sm">
+                      {loading ? "Carregando…" : "Sem cupons emitidos para os filtros atuais."}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          {sorted.length > 10 && (
+            <div className="mt-3 flex justify-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setExpand((v) => !v)}
+                className="text-[color:var(--color-blow-green-dark)] hover:bg-[color:var(--color-blow-green-light)]/20"
+              >
+                {expand ? "Ver menos" : "Ver mais"}
+              </Button>
+            </div>
+          )}
+        </section>
+
+        <footer className="pt-4 pb-8 text-center text-xs text-muted-foreground">
+          bLOw · Curadoria de parcerias ·{" "}
+          {loading ? "carregando…" : `${num(sorted.length)} cupons`}
+        </footer>
+      </main>
+    </>
+  );
+}
