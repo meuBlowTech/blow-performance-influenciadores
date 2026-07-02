@@ -85,6 +85,8 @@ function Dashboard() {
   const [unidades, setUnidades] = useState<string[]>([]);
   const [cupons, setCupons] = useState<string[]>([]);
   const [chartMode, setChartMode] = useState<"dia" | "semana">("dia");
+  const [chartModeInf, setChartModeInf] = useState<"dia" | "semana">("dia");
+  const [selectedInfluencers, setSelectedInfluencers] = useState<string[] | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -242,6 +244,57 @@ function Dashboard() {
   }, [filtered]);
 
   const top15 = cuponsRanking.slice(0, 15);
+
+  // Influenciadoras — mesma agregação de cupons, mas exibida como visão de influência
+  const influencerRanking = cuponsRanking;
+  const topInfluencerCodes = useMemo(
+    () => influencerRanking.slice(0, 5).map((r) => r.codigo),
+    [influencerRanking],
+  );
+  const activeInfluencers = selectedInfluencers ?? topInfluencerCodes;
+
+  const influencerLabels = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of influencerRanking) {
+      m.set(r.codigo, r.nome ? `${r.codigo} · ${r.nome}` : r.codigo);
+    }
+    return m;
+  }, [influencerRanking]);
+
+  const influencerTimeSeries = useMemo(() => {
+    if (activeInfluencers.length === 0) return [] as Array<Record<string, number | string>>;
+    const active = new Set(activeInfluencers);
+    // period -> code -> receita
+    const map = new Map<string, Map<string, number>>();
+    for (const r of filtered) {
+      const code = r.codigo_cupom;
+      if (!code || !active.has(code)) continue;
+      if (!r.data_hora_atendimento) continue;
+      const key =
+        chartModeInf === "dia"
+          ? isoDay(r.data_hora_atendimento)
+          : isoWeek(r.data_hora_atendimento);
+      if (!key) continue;
+      if (!map.has(key)) map.set(key, new Map());
+      const inner = map.get(key)!;
+      inner.set(code, (inner.get(code) || 0) + (Number(r.valor_liquido) || 0));
+    }
+    return Array.from(map.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([k, inner]) => {
+        const row: Record<string, number | string> = {
+          key: k,
+          label:
+            chartModeInf === "dia"
+              ? dateBR(k + "T00:00:00")
+              : k.replace("-S", " · Sem "),
+        };
+        for (const code of activeInfluencers) {
+          row[code] = Number((inner.get(code) || 0).toFixed(2));
+        }
+        return row;
+      });
+  }, [filtered, chartModeInf, activeInfluencers]);
 
   // Unidades
   const unidadesData = useMemo(() => {
@@ -607,6 +660,135 @@ function Dashboard() {
           </div>
         </section>
 
+        {/* Influenciadoras */}
+        <section className="card-blow p-4 md:p-6">
+          <div className="mb-4">
+            <h2 className="text-xl md:text-2xl">Desempenho por influenciadora</h2>
+            <p className="text-sm text-muted-foreground">
+              Cada cupom representa uma influenciadora. Respeita filtros de período e unidade.
+            </p>
+          </div>
+          <div className="overflow-x-auto rounded-xl border border-border mb-6">
+            <table className="w-full text-sm">
+              <thead className="bg-[color:var(--color-blow-pink-light)]/60 text-[color:var(--color-blow-green-dark)]">
+                <tr>
+                  <Th>Influenciadora</Th>
+                  <Th className="text-right">Nº cupons utilizados</Th>
+                  <Th className="text-right">Receita total</Th>
+                  <Th className="text-right">Ticket médio</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {influencerRanking.map((r) => (
+                  <tr key={r.codigo} className="border-t border-border hover:bg-muted/50">
+                    <Td>
+                      <div className="font-medium">{r.nome || "—"}</div>
+                      <div className="text-xs text-muted-foreground">{r.codigo}</div>
+                    </Td>
+                    <Td className="text-right tabular-nums">{num(r.atendimentos)}</Td>
+                    <Td className="text-right tabular-nums">{brl(r.receita)}</Td>
+                    <Td className="text-right tabular-nums">{brl(r.ticket)}</Td>
+                  </tr>
+                ))}
+                {influencerRanking.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="p-6 text-center text-muted-foreground text-sm">
+                      Sem dados no período.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
+            <div>
+              <h3 className="text-lg">Faturamento por influenciadora ao longo do tempo</h3>
+              <p className="text-sm text-muted-foreground">
+                Padrão: top 5 por receita. Ajuste no seletor.
+              </p>
+            </div>
+            <div className="flex items-end gap-3">
+              <MultiFilter
+                label="Influenciadoras"
+                options={influencerRanking.map((r) => r.codigo)}
+                optionLabels={influencerLabels}
+                selected={activeInfluencers}
+                onChange={(v) => setSelectedInfluencers(v)}
+              />
+              <div className="inline-flex rounded-full border border-border bg-muted p-1">
+                {(["dia", "semana"] as const).map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => setChartModeInf(m)}
+                    className={cn(
+                      "px-4 py-1.5 text-xs font-medium rounded-full transition-colors",
+                      chartModeInf === m
+                        ? "bg-[color:var(--color-blow-green-dark)] text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {m === "dia" ? "Diário" : "Semanal"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="h-[360px] w-full">
+            {influencerTimeSeries.length === 0 || activeInfluencers.length === 0 ? (
+              <EmptyState loading={loading} />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={influencerTimeSeries}
+                  margin={{ top: 10, right: 20, bottom: 20, left: 10 }}
+                >
+                  <CartesianGrid stroke={C.neutral} vertical={false} />
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fill: C.greenDark, fontSize: 11 }}
+                    stroke={C.neutralDark}
+                    minTickGap={20}
+                  />
+                  <YAxis
+                    tick={{ fill: C.greenDark, fontSize: 11 }}
+                    stroke={C.neutralDark}
+                    tickFormatter={(v) =>
+                      v >= 1000 ? `R$ ${(v / 1000).toFixed(0)}k` : `R$ ${v}`
+                    }
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: "#fff",
+                      border: `1px solid ${C.neutral}`,
+                      borderRadius: 10,
+                      fontSize: 12,
+                    }}
+                    labelStyle={{ color: C.greenDark, fontWeight: 600 }}
+                    formatter={(v: number, name: string) => [
+                      brl(v),
+                      influencerLabels.get(name) || name,
+                    ]}
+                  />
+                  {activeInfluencers.map((code, i) => (
+                    <Line
+                      key={code}
+                      type="monotone"
+                      dataKey={code}
+                      name={code}
+                      stroke={BAR_PALETTE[i % BAR_PALETTE.length]}
+                      strokeWidth={2}
+                      dot={false}
+                      activeDot={{ r: 4 }}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </section>
+
         {/* Unidades */}
         <section className="card-blow p-4 md:p-6">
           <div className="mb-4">
@@ -749,7 +931,7 @@ function KPI({
       </div>
       <div
         className={cn(
-          "mt-3 text-3xl md:text-[2rem] font-display font-medium tabular-nums",
+          "mt-3 text-3xl md:text-[2rem] font-semibold tabular-nums tracking-tight",
           accent === "terracotta" && "text-[color:var(--color-blow-pink-light)]",
         )}
       >
@@ -815,17 +997,20 @@ function DateRange({
 function MultiFilter({
   label,
   options,
+  optionLabels,
   selected,
   onChange,
 }: {
   label: string;
   options: string[];
+  optionLabels?: Map<string, string>;
   selected: string[];
   onChange: (v: string[]) => void;
 }) {
   const [query, setQuery] = useState("");
+  const labelFor = (o: string) => optionLabels?.get(o) ?? o;
   const shown = query
-    ? options.filter((o) => o.toLowerCase().includes(query.toLowerCase()))
+    ? options.filter((o) => labelFor(o).toLowerCase().includes(query.toLowerCase()))
     : options;
   const toggle = (v: string) => {
     onChange(selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v]);
@@ -882,7 +1067,7 @@ function MultiFilter({
                     checked={selected.includes(o)}
                     onCheckedChange={() => toggle(o)}
                   />
-                  <span className="truncate">{o}</span>
+                  <span className="truncate">{labelFor(o)}</span>
                 </label>
               ))}
             </div>
