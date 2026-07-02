@@ -749,7 +749,7 @@ function KPI({
       </div>
       <div
         className={cn(
-          "mt-3 text-3xl md:text-[2rem] font-display font-medium tabular-nums",
+          "mt-3 text-3xl md:text-[2rem] font-semibold tabular-nums tracking-tight",
           accent === "terracotta" && "text-[color:var(--color-blow-pink-light)]",
         )}
       >
