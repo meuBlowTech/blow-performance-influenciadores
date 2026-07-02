@@ -87,6 +87,8 @@ function Dashboard() {
   const [chartMode, setChartMode] = useState<"dia" | "semana">("dia");
   const [chartModeInf, setChartModeInf] = useState<"dia" | "semana">("dia");
   const [selectedInfluencers, setSelectedInfluencers] = useState<string[] | null>(null);
+  const [expandInfluencers, setExpandInfluencers] = useState(false);
+  const [expandUnidades, setExpandUnidades] = useState(false);
 
   useEffect(() => {
     let alive = true;
