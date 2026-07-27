@@ -346,7 +346,8 @@ function PerformanceView() {
       }))
       .sort((a, b) => b.receita - a.receita);
 
-  }, [filtered]);
+  }, [filtered, influencerMap]);
+
 
   const top15 = cuponsRanking.slice(0, 15);
 
