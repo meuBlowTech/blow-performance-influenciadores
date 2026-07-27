@@ -14,7 +14,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { brl, num, dateBR } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+
+type SubTab = "comparativo" | "gerenciar";
 
 type Inauguracao = {
   id: string;
@@ -35,6 +38,7 @@ const C = {
 };
 
 export default function InauguracaoView() {
+  const [sub, setSub] = useState<SubTab>("comparativo");
   const [rows, setRows] = useState<Inauguracao[]>([]);
   const [loading, setLoading] = useState(true);
   const [adminPass, setAdminPass] = useState<string | null>(null);
@@ -71,18 +75,69 @@ export default function InauguracaoView() {
     [rows],
   );
 
+  const tabs: { id: SubTab; label: string }[] = [
+    { id: "comparativo", label: "Comparativo" },
+    { id: "gerenciar", label: "Gerenciar Unidades" },
+  ];
+
   return (
-    <div className="mx-auto max-w-[1400px] px-6 py-8 space-y-8">
-      {/* Section 1 */}
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">
-            Comparativo de inaugurações
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Performance dos primeiros 30 dias de cada unidade.
-          </p>
-        </div>
+    <main className="mx-auto max-w-[1400px] px-6 py-8">
+      <div className="mb-6 flex flex-wrap gap-1 border-b border-border">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setSub(t.id)}
+            className={cn(
+              "px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px",
+              sub === t.id
+                ? "border-[color:var(--color-blow-green-dark)] text-[color:var(--color-blow-green-dark)]"
+                : "border-transparent text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {sub === "comparativo" && (
+        <ComparativoSection loading={loading} rows={rows} chartData={chartData} />
+      )}
+
+      {sub === "gerenciar" && (
+        adminPass ? (
+          <ManageInauguracoes
+            password={adminPass}
+            rows={rows}
+            reload={load}
+          />
+        ) : (
+          <PasswordGate onAuthed={setAdminPass} />
+        )
+      )}
+    </main>
+  );
+}
+
+function ComparativoSection({
+  loading,
+  rows,
+  chartData,
+}: {
+  loading: boolean;
+  rows: Inauguracao[];
+  chartData: { nome: string; data: string; receita: number; janela_completa: boolean }[];
+}) {
+  return (
+    <section className="space-y-4">
+      <div>
+        <h2 className="text-2xl font-semibold tracking-tight">
+          Comparativo de inaugurações
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Performance dos primeiros 30 dias de cada unidade.
+        </p>
+      </div>
+
 
         {loading ? (
           <div className="card-blow p-6 text-sm text-muted-foreground">
@@ -186,31 +241,9 @@ export default function InauguracaoView() {
           </>
         )}
       </section>
-
-      {/* Section 2 */}
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">
-            Gerenciar unidades
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Área restrita — cadastro e edição das unidades inauguradas.
-          </p>
-        </div>
-
-        {adminPass ? (
-          <ManageInauguracoes
-            password={adminPass}
-            rows={rows}
-            reload={load}
-          />
-        ) : (
-          <PasswordGate onAuthed={setAdminPass} />
-        )}
-      </section>
-    </div>
   );
 }
+
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
