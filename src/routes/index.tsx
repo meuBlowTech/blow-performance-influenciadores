@@ -122,8 +122,10 @@ function Dashboard() {
         <PerformanceView />
       ) : activeTab === "influenciadores" ? (
         <CuradoriaView />
-      ) : (
+      ) : activeTab === "clube" ? (
         <ClubeView />
+      ) : (
+        <InauguracaoView />
       )}
 
     </div>
