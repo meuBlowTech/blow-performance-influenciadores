@@ -1576,6 +1576,9 @@ function CuradoriaView() {
           </div>
         )}
 
+        {/* ============ PANORAMA DAS INFLUENCIADORAS (Clube) ============ */}
+        <InfluenciadorasSection />
+
         {/* ============ VISÃO POR UNIDADE ============ */}
         <div className="space-y-8">
           <div>
