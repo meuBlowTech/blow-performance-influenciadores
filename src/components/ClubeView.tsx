@@ -206,7 +206,7 @@ function AdminGate({
 }
 
 // ---------- Status tab ----------
-type FilterCard = null | "ativas" | "unidades" | "expirados" | "expirando";
+type FilterCard = null | "ativas" | "inativas" | "unidades" | "expirados" | "expirando";
 
 function StatusTab({
   influenciadoras,
@@ -222,6 +222,7 @@ function StatusTab({
   const [visible, setVisible] = useState(12);
 
   const ativas = influenciadoras.filter((i) => i.status_parceria === "ativa");
+  const inativas = influenciadoras.filter((i) => i.status_parceria === "encerrada");
   const unidadesAtivas = new Set<string>();
   for (const i of ativas) for (const u of unidadesDe(i)) unidadesAtivas.add(u);
   const expirados = influenciadoras.filter((i) => i.status_cupom === "encerrada");
@@ -239,6 +240,7 @@ function StatusTab({
       if (cardFilter === "ativas" || cardFilter === "unidades") {
         if (i.status_parceria !== "ativa") return false;
       }
+      if (cardFilter === "inativas" && i.status_parceria !== "encerrada") return false;
       if (cardFilter === "expirados" && i.status_cupom !== "encerrada") return false;
       if (cardFilter === "expirando" && !isExpiringSoon(i)) return false;
 
@@ -258,54 +260,80 @@ function StatusTab({
     value,
     active,
     onClick,
+    tone,
   }: {
     label: string;
     value: number;
     active: boolean;
     onClick: () => void;
-  }) => (
-    <button
-      onClick={onClick}
-      className={cn(
-        "card-blow p-5 text-left transition-all hover:shadow-md",
-        active && "ring-2 ring-[color:var(--color-blow-green)]",
-      )}
-    >
-      <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className="mt-2 text-3xl font-semibold text-[color:var(--color-blow-green-dark)]">
-        {value}
-      </div>
-    </button>
-  );
+    tone?: "green-dark" | "green-light" | "neutral" | "terracotta" | "amber";
+  }) => {
+    const toneBar: Record<string, string> = {
+      "green-dark": "bg-[color:var(--color-blow-green-dark)]",
+      "green-light": "bg-[color:var(--color-blow-green-light)]",
+      neutral: "bg-[color:var(--color-blow-neutral-dark)]",
+      terracotta: "bg-[color:var(--color-blow-terracotta)]",
+      amber: "bg-amber-500",
+    };
+    return (
+      <button
+        onClick={onClick}
+        className={cn(
+          "card-blow p-5 text-left transition-all hover:shadow-md relative overflow-hidden",
+          active && "ring-2 ring-[color:var(--color-blow-green)]",
+        )}
+      >
+        <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
+        <div className="mt-2 text-3xl font-semibold text-[color:var(--color-blow-green-dark)]">
+          {value}
+        </div>
+        {tone && (
+          <div className={cn("absolute right-0 bottom-0 h-1.5 w-24", toneBar[tone])} />
+        )}
+      </button>
+    );
+  };
 
   return (
     <div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
         <KpiCard
-          label="Ativas"
+          label="Influenciadoras ativas"
           value={ativas.length}
           active={cardFilter === "ativas"}
           onClick={() => toggleCard("ativas")}
+          tone="green-dark"
+        />
+        <KpiCard
+          label="Influenciadoras inativas"
+          value={inativas.length}
+          active={cardFilter === "inativas"}
+          onClick={() => toggleCard("inativas")}
+          tone="neutral"
         />
         <KpiCard
           label="Unidades ativas"
           value={unidadesAtivas.size}
           active={cardFilter === "unidades"}
           onClick={() => toggleCard("unidades")}
+          tone="green-light"
         />
         <KpiCard
           label="Cupons expirados"
           value={expirados.length}
           active={cardFilter === "expirados"}
           onClick={() => toggleCard("expirados")}
+          tone="terracotta"
         />
         <KpiCard
           label="Expirando em 30 dias"
           value={expirando.length}
           active={cardFilter === "expirando"}
           onClick={() => toggleCard("expirando")}
+          tone="amber"
         />
       </div>
+
 
       <div className="flex flex-wrap gap-3 mb-6">
         <div className="min-w-[220px]">
