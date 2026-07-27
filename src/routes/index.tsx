@@ -99,6 +99,7 @@ function Dashboard() {
               { id: "performance", label: "Performance" },
               { id: "influenciadores", label: "Influenciadores" },
               { id: "clube", label: "Clube de Embaixadoras" },
+              { id: "inauguracao", label: "Inauguração" },
             ] as const).map((t) => (
 
               <button
