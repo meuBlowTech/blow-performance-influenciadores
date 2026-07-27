@@ -40,6 +40,7 @@ type ClubeSolicitacao = {
   unidade: string | null;
   outras_unidades: string | null;
   formato_parceria_sugerido: string | null;
+  codigo_cupom_sugerido: string | null;
   instagram: string | null;
   contato: string | null;
   observacao: string | null;
@@ -480,6 +481,7 @@ function SolicitarTab({ influenciadoras }: { influenciadoras: ClubeInfluenciador
     solicitante_email: "",
     nome_influenciador: "",
     unidade: "",
+    codigo_cupom_sugerido: "",
     outras_unidades: "",
     formato_parceria_sugerido: "clube",
     instagram: "",
@@ -537,6 +539,7 @@ function SolicitarTab({ influenciadoras }: { influenciadoras: ClubeInfluenciador
               solicitante_email: "",
               nome_influenciador: "",
               unidade: "",
+              codigo_cupom_sugerido: "",
               outras_unidades: "",
               formato_parceria_sugerido: "clube",
               instagram: "",
@@ -579,6 +582,13 @@ function SolicitarTab({ influenciadoras }: { influenciadoras: ClubeInfluenciador
           <datalist id="unidades-sugestoes">
             {unidadesSugestoes.map((u) => <option key={u} value={u} />)}
           </datalist>
+        </Field>
+        <Field label="Código do cupom (se já souber)">
+          <Input
+            value={form.codigo_cupom_sugerido}
+            onChange={(e) => upd("codigo_cupom_sugerido")(e.target.value)}
+            placeholder="Opcional"
+          />
         </Field>
         <Field label="Outras unidades (separe por vírgula)">
           <Input value={form.outras_unidades} onChange={(e) => upd("outras_unidades")(e.target.value)} />
@@ -705,6 +715,12 @@ function AprovacoesTab({
               <dt className="text-muted-foreground">Contato</dt>
               <dd className="font-medium truncate">{s.contato || "—"}</dd>
             </div>
+            {s.codigo_cupom_sugerido && (
+              <div className="col-span-2">
+                <dt className="text-muted-foreground">Cupom sugerido</dt>
+                <dd className="font-medium font-mono">{s.codigo_cupom_sugerido}</dd>
+              </div>
+            )}
           </dl>
           {s.observacao && (
             <p className="mt-3 text-xs text-muted-foreground italic">"{s.observacao}"</p>
