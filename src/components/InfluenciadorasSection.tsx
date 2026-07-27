@@ -134,44 +134,8 @@ export default function InfluenciadorasSection() {
     };
   }, []);
 
-  // KPIs
-  const kpis = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const in30 = new Date(today.getTime() + 30 * 86400000);
 
-    let ativas = 0;
-    let expirados = 0;
-    let expirando = 0;
-    const unidadesSet = new Set<string>();
 
-    for (const i of influs) {
-      const stP = (i.status_parceria || "").trim().toLowerCase();
-      const stC = (i.status_cupom || "").trim().toLowerCase();
-      if (stP === "ativa") {
-        ativas += 1;
-        if (i.unidade) unidadesSet.add(i.unidade.trim());
-        if (Array.isArray(i.unidades_inclusas)) {
-          for (const u of i.unidades_inclusas) {
-            if (u) unidadesSet.add(u.trim());
-          }
-        }
-      }
-      if (stC === "encerrada") expirados += 1;
-      if (stC === "ativa" && i.data_validade) {
-        const dv = new Date(i.data_validade);
-        if (!Number.isNaN(dv.getTime()) && dv >= today && dv <= in30) {
-          expirando += 1;
-        }
-      }
-    }
-    return {
-      ativas,
-      unidadesAtivas: unidadesSet.size,
-      expirados,
-      expirando,
-    };
-  }, [influs]);
 
   // Chart data
   const chartData = useMemo(
