@@ -97,7 +97,9 @@ function Dashboard() {
             {([
               { id: "performance", label: "Performance" },
               { id: "influenciadores", label: "Influenciadores" },
+              { id: "clube", label: "Clube de Embaixadoras" },
             ] as const).map((t) => (
+
               <button
                 key={t.id}
                 onClick={() => setActiveTab(t.id)}
