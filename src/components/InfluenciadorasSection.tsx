@@ -59,6 +59,14 @@ type Faturamento = {
   ultima_utilizacao: string | null;
 };
 
+type StatusCupons = {
+  cupons_cadastrados: number | null;
+  cupons_convertidos: number | null;
+  cupons_nao_convertidos: number | null;
+  taxa_conversao_pct: number | null;
+  receita_total: number | null;
+};
+
 function monthLabel(iso: string) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
