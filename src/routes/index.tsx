@@ -235,6 +235,9 @@ function PerformanceView() {
     const cSet = cupons.length ? new Set(cupons) : null;
 
     return rows.filter((r) => {
+      // Restrict to coupons registered in clube_influenciadoras
+      const code = (r.codigo_cupom || "").trim().toUpperCase();
+      if (!code || !influencerMap.has(code)) return false;
       if (uSet && !uSet.has(r.estabelecimento || "")) return false;
       if (cSet && !cSet.has(r.codigo_cupom || "")) return false;
       if (startTs !== null || endTs !== null) {
@@ -246,7 +249,8 @@ function PerformanceView() {
       }
       return true;
     });
-  }, [rows, dateStart, dateEnd, unidades, cupons]);
+  }, [rows, dateStart, dateEnd, unidades, cupons, influencerMap]);
+
 
   // KPIs
   const kpis = useMemo(() => {
