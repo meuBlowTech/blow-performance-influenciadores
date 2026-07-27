@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import { dateBR } from "@/lib/format";
 import { toast } from "sonner";
+import { useUnidadesUnificadas } from "@/hooks/useUnidadesUnificadas";
 
 // ---------- Types ----------
 type ClubeInfluenciadora = {
