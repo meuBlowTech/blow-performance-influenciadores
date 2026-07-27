@@ -99,6 +99,7 @@ export default function InfluenciadorasSection() {
           { data: iData, error: iErr },
           { data: mData, error: mErr },
           { data: fData, error: fErr },
+          { data: sData, error: sErr },
         ] = await Promise.all([
           supabase
             .from("clube_influenciadoras")
@@ -110,14 +111,17 @@ export default function InfluenciadorasSection() {
             .from("clube_faturamento_por_influenciadora")
             .select("*")
             .order("receita_total", { ascending: false }),
+          supabase.from("clube_status_cupons").select("*").maybeSingle(),
         ]);
         if (iErr) throw iErr;
         if (mErr) throw mErr;
         if (fErr) throw fErr;
+        if (sErr) throw sErr;
         if (alive) {
           setInflus((iData as ClubeInflu[]) || []);
           setMensal((mData as Mensal[]) || []);
           setFatur((fData as Faturamento[]) || []);
+          setStatusCupons((sData as StatusCupons) || null);
         }
       } catch (e: unknown) {
         if (alive) setError(e instanceof Error ? e.message : String(e));
