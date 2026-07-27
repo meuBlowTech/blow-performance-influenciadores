@@ -317,10 +317,12 @@ function PerformanceView() {
     for (const r of filtered) {
       const code = r.codigo_cupom;
       if (!code) continue;
+      const registeredName =
+        influencerMap.get(code.trim().toUpperCase()) || "";
       if (!map.has(code))
         map.set(code, {
           codigo: code,
-          nome: r.nome_cupom || "",
+          nome: registeredName || r.nome_cupom || "",
           receita: 0,
           comandas: new Set(),
         });
@@ -332,7 +334,7 @@ function PerformanceView() {
             r.data_hora_atendimento ? isoDay(r.data_hora_atendimento) : ""
           }`,
         );
-      if (!a.nome && r.nome_cupom) a.nome = r.nome_cupom;
+      if (!a.nome && registeredName) a.nome = registeredName;
     }
     return Array.from(map.values())
       .map((a) => ({
@@ -343,6 +345,7 @@ function PerformanceView() {
         ticket: a.comandas.size ? a.receita / a.comandas.size : 0,
       }))
       .sort((a, b) => b.receita - a.receita);
+
   }, [filtered]);
 
   const top15 = cuponsRanking.slice(0, 15);
