@@ -37,6 +37,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import ClubeView from "@/components/ClubeView";
+import InfluenciadorasSection from "@/components/InfluenciadorasSection";
 
 
 export const Route = createFileRoute("/")({
@@ -1574,6 +1575,9 @@ function CuradoriaView() {
             Erro ao carregar dados: {error}
           </div>
         )}
+
+        {/* ============ PANORAMA DAS INFLUENCIADORAS (Clube) ============ */}
+        <InfluenciadorasSection />
 
         {/* ============ VISÃO POR UNIDADE ============ */}
         <div className="space-y-8">
