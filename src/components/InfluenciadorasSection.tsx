@@ -78,6 +78,7 @@ export default function InfluenciadorasSection() {
   const [influs, setInflus] = useState<ClubeInflu[]>([]);
   const [mensal, setMensal] = useState<Mensal[]>([]);
   const [fatur, setFatur] = useState<Faturamento[]>([]);
+  const [statusCupons, setStatusCupons] = useState<StatusCupons | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
