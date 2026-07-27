@@ -77,7 +77,7 @@ const BAR_PALETTE = [
 type Row = ConsumoCupom;
 
 function Dashboard() {
-  const [activeTab, setActiveTab] = useState<"performance" | "influenciadores">("performance");
+  const [activeTab, setActiveTab] = useState<"performance" | "influenciadores" | "clube">("performance");
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-[color:var(--color-blow-green-dark)] text-primary-foreground">
