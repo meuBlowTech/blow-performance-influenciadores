@@ -135,8 +135,10 @@ function Dashboard() {
 
 function PerformanceView() {
   const [rows, setRows] = useState<Row[]>([]);
+  const [influencerMap, setInfluencerMap] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
 
   // filters
   const [dateStart, setDateStart] = useState<Date | undefined>(() => {
