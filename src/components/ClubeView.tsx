@@ -583,6 +583,13 @@ function SolicitarTab({ influenciadoras }: { influenciadoras: ClubeInfluenciador
             {unidadesSugestoes.map((u) => <option key={u} value={u} />)}
           </datalist>
         </Field>
+        <Field label="Código do cupom (se já souber)">
+          <Input
+            value={form.codigo_cupom_sugerido}
+            onChange={(e) => upd("codigo_cupom_sugerido")(e.target.value)}
+            placeholder="Opcional"
+          />
+        </Field>
         <Field label="Outras unidades (separe por vírgula)">
           <Input value={form.outras_unidades} onChange={(e) => upd("outras_unidades")(e.target.value)} />
         </Field>
