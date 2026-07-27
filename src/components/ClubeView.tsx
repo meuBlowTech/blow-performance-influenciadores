@@ -481,6 +481,7 @@ function SolicitarTab({ influenciadoras }: { influenciadoras: ClubeInfluenciador
     solicitante_email: "",
     nome_influenciador: "",
     unidade: "",
+    codigo_cupom_sugerido: "",
     outras_unidades: "",
     formato_parceria_sugerido: "clube",
     instagram: "",
