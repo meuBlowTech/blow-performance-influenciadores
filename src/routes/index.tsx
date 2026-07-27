@@ -37,6 +37,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import ClubeView from "@/components/ClubeView";
+import InauguracaoView from "@/components/InauguracaoView";
 import InfluenciadorasSection from "@/components/InfluenciadorasSection";
 
 
@@ -78,7 +79,7 @@ const BAR_PALETTE = [
 type Row = ConsumoCupom;
 
 function Dashboard() {
-  const [activeTab, setActiveTab] = useState<"performance" | "influenciadores" | "clube">("performance");
+  const [activeTab, setActiveTab] = useState<"performance" | "influenciadores" | "clube" | "inauguracao">("performance");
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-[color:var(--color-blow-green-dark)] text-primary-foreground">
@@ -99,6 +100,7 @@ function Dashboard() {
               { id: "performance", label: "Performance" },
               { id: "influenciadores", label: "Influenciadores" },
               { id: "clube", label: "Clube de Embaixadoras" },
+              { id: "inauguracao", label: "Inauguração" },
             ] as const).map((t) => (
 
               <button
@@ -121,8 +123,10 @@ function Dashboard() {
         <PerformanceView />
       ) : activeTab === "influenciadores" ? (
         <CuradoriaView />
-      ) : (
+      ) : activeTab === "clube" ? (
         <ClubeView />
+      ) : (
+        <InauguracaoView />
       )}
 
     </div>
