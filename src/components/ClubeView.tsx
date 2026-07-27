@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import { dateBR } from "@/lib/format";
 import { toast } from "sonner";
+import { useUnidadesUnificadas } from "@/hooks/useUnidadesUnificadas";
 
 // ---------- Types ----------
 type ClubeInfluenciadora = {
@@ -228,11 +229,12 @@ function StatusTab({
   const expirados = influenciadoras.filter((i) => i.status_cupom === "encerrada");
   const expirando = influenciadoras.filter(isExpiringSoon);
 
+  const { unidades: unidadesUnificadas } = useUnidadesUnificadas();
   const allUnidades = useMemo(() => {
-    const s = new Set<string>();
+    const s = new Set<string>(unidadesUnificadas);
     for (const i of influenciadoras) for (const u of unidadesDe(i)) s.add(u);
     return Array.from(s).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [influenciadoras]);
+  }, [influenciadoras, unidadesUnificadas]);
 
   const filtered = useMemo(() => {
     return influenciadoras.filter((i) => {
@@ -487,11 +489,12 @@ function SolicitarTab({ influenciadoras }: { influenciadoras: ClubeInfluenciador
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
 
+  const { unidades: unidadesUnificadas } = useUnidadesUnificadas();
   const unidadesSugestoes = useMemo(() => {
-    const s = new Set<string>();
+    const s = new Set<string>(unidadesUnificadas);
     for (const i of influenciadoras) for (const u of unidadesDe(i)) s.add(u);
     return Array.from(s).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [influenciadoras]);
+  }, [influenciadoras, unidadesUnificadas]);
 
   const upd = (k: keyof typeof form) => (v: string) =>
     setForm((prev) => ({ ...prev, [k]: v }));
