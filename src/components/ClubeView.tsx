@@ -229,11 +229,12 @@ function StatusTab({
   const expirados = influenciadoras.filter((i) => i.status_cupom === "encerrada");
   const expirando = influenciadoras.filter(isExpiringSoon);
 
+  const { unidades: unidadesUnificadas } = useUnidadesUnificadas();
   const allUnidades = useMemo(() => {
-    const s = new Set<string>();
+    const s = new Set<string>(unidadesUnificadas);
     for (const i of influenciadoras) for (const u of unidadesDe(i)) s.add(u);
     return Array.from(s).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [influenciadoras]);
+  }, [influenciadoras, unidadesUnificadas]);
 
   const filtered = useMemo(() => {
     return influenciadoras.filter((i) => {
