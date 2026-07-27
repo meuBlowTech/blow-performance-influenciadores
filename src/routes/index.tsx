@@ -36,6 +36,8 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import ClubeView from "@/components/ClubeView";
+
 
 export const Route = createFileRoute("/")({
   component: Dashboard,
