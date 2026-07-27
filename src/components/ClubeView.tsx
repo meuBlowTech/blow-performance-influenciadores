@@ -715,6 +715,12 @@ function AprovacoesTab({
               <dt className="text-muted-foreground">Contato</dt>
               <dd className="font-medium truncate">{s.contato || "—"}</dd>
             </div>
+            {s.codigo_cupom_sugerido && (
+              <div className="col-span-2">
+                <dt className="text-muted-foreground">Cupom sugerido</dt>
+                <dd className="font-medium font-mono">{s.codigo_cupom_sugerido}</dd>
+              </div>
+            )}
           </dl>
           {s.observacao && (
             <p className="mt-3 text-xs text-muted-foreground italic">"{s.observacao}"</p>
