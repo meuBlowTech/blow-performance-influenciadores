@@ -134,44 +134,8 @@ export default function InfluenciadorasSection() {
     };
   }, []);
 
-  // KPIs
-  const kpis = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const in30 = new Date(today.getTime() + 30 * 86400000);
 
-    let ativas = 0;
-    let expirados = 0;
-    let expirando = 0;
-    const unidadesSet = new Set<string>();
 
-    for (const i of influs) {
-      const stP = (i.status_parceria || "").trim().toLowerCase();
-      const stC = (i.status_cupom || "").trim().toLowerCase();
-      if (stP === "ativa") {
-        ativas += 1;
-        if (i.unidade) unidadesSet.add(i.unidade.trim());
-        if (Array.isArray(i.unidades_inclusas)) {
-          for (const u of i.unidades_inclusas) {
-            if (u) unidadesSet.add(u.trim());
-          }
-        }
-      }
-      if (stC === "encerrada") expirados += 1;
-      if (stC === "ativa" && i.data_validade) {
-        const dv = new Date(i.data_validade);
-        if (!Number.isNaN(dv.getTime()) && dv >= today && dv <= in30) {
-          expirando += 1;
-        }
-      }
-    }
-    return {
-      ativas,
-      unidadesAtivas: unidadesSet.size,
-      expirados,
-      expirando,
-    };
-  }, [influs]);
 
   // Chart data
   const chartData = useMemo(
@@ -244,39 +208,8 @@ export default function InfluenciadorasSection() {
         </div>
       )}
 
-      {/* KPI cards */}
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <ClickableKPI
-          label="Ativas"
-          value={num(kpis.ativas)}
-          active={activeCard === "ativas"}
-          onClick={() =>
-            setActiveCard((c) => (c === "ativas" ? null : "ativas"))
-          }
-        />
-        <ClickableKPI
-          label="Unidades ativas"
-          value={num(kpis.unidadesAtivas)}
-        />
-        <ClickableKPI
-          label="Cupons expirados"
-          value={num(kpis.expirados)}
-          tone="terracotta"
-          active={activeCard === "expirados"}
-          onClick={() =>
-            setActiveCard((c) => (c === "expirados" ? null : "expirados"))
-          }
-        />
-        <ClickableKPI
-          label="Expirando em 30 dias"
-          value={num(kpis.expirando)}
-          tone="amber"
-          active={activeCard === "expirando"}
-          onClick={() =>
-            setActiveCard((c) => (c === "expirando" ? null : "expirando"))
-          }
-        />
-      </section>
+
+
 
       {/* Conversion cards (clube_status_cupons) */}
       <section className="grid grid-cols-2 lg:grid-cols-5 gap-4">

@@ -139,8 +139,18 @@ function PerformanceView() {
   const [error, setError] = useState<string | null>(null);
 
   // filters
-  const [dateStart, setDateStart] = useState<Date | undefined>();
-  const [dateEnd, setDateEnd] = useState<Date | undefined>();
+  const [dateStart, setDateStart] = useState<Date | undefined>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
+  const [dateEnd, setDateEnd] = useState<Date | undefined>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
   const [unidades, setUnidades] = useState<string[]>([]);
   const [cupons, setCupons] = useState<string[]>([]);
   const [chartMode, setChartMode] = useState<"dia" | "semana">("dia");
