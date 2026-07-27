@@ -135,8 +135,10 @@ function Dashboard() {
 
 function PerformanceView() {
   const [rows, setRows] = useState<Row[]>([]);
+  const [influencerMap, setInfluencerMap] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
 
   // filters
   const [dateStart, setDateStart] = useState<Date | undefined>(() => {
@@ -163,6 +165,22 @@ function PerformanceView() {
     let alive = true;
     (async () => {
       setLoading(true);
+      // Load registered influencers first — restrict entire Performance tab
+      // to coupons cadastrados em clube_influenciadoras.
+      const { data: influData, error: influErr } = await supabase
+        .from("clube_influenciadoras")
+        .select("nome, codigo_cupom");
+      if (influErr) {
+        if (alive) setError(influErr.message);
+      }
+      const map = new Map<string, string>();
+      for (const i of (influData || []) as { nome: string | null; codigo_cupom: string | null }[]) {
+        for (const c of parseCodes(i.codigo_cupom)) {
+          if (!map.has(c)) map.set(c, (i.nome || "").trim());
+        }
+      }
+      if (alive) setInfluencerMap(map);
+
       // paginate to bypass 1000-row default
       const all: Row[] = [];
       const pageSize = 1000;
@@ -188,6 +206,7 @@ function PerformanceView() {
         setLoading(false);
       }
     })();
+
     return () => {
       alive = false;
     };
@@ -204,10 +223,18 @@ function PerformanceView() {
   const allCupons = useMemo(
     () =>
       Array.from(
-        new Set(rows.map((r) => r.codigo_cupom).filter(Boolean) as string[]),
+        new Set(
+          rows
+            .map((r) => r.codigo_cupom)
+            .filter(
+              (c): c is string =>
+                !!c && influencerMap.has(c.trim().toUpperCase()),
+            ),
+        ),
       ).sort((a, b) => a.localeCompare(b, "pt-BR")),
-    [rows],
+    [rows, influencerMap],
   );
+
 
   const filtered = useMemo(() => {
     const startTs = dateStart ? new Date(dateStart).setHours(0, 0, 0, 0) : null;
@@ -216,6 +243,9 @@ function PerformanceView() {
     const cSet = cupons.length ? new Set(cupons) : null;
 
     return rows.filter((r) => {
+      // Restrict to coupons registered in clube_influenciadoras
+      const code = (r.codigo_cupom || "").trim().toUpperCase();
+      if (!code || !influencerMap.has(code)) return false;
       if (uSet && !uSet.has(r.estabelecimento || "")) return false;
       if (cSet && !cSet.has(r.codigo_cupom || "")) return false;
       if (startTs !== null || endTs !== null) {
@@ -227,7 +257,8 @@ function PerformanceView() {
       }
       return true;
     });
-  }, [rows, dateStart, dateEnd, unidades, cupons]);
+  }, [rows, dateStart, dateEnd, unidades, cupons, influencerMap]);
+
 
   // KPIs
   const kpis = useMemo(() => {
@@ -286,10 +317,12 @@ function PerformanceView() {
     for (const r of filtered) {
       const code = r.codigo_cupom;
       if (!code) continue;
+      const registeredName =
+        influencerMap.get(code.trim().toUpperCase()) || "";
       if (!map.has(code))
         map.set(code, {
           codigo: code,
-          nome: r.nome_cupom || "",
+          nome: registeredName || r.nome_cupom || "",
           receita: 0,
           comandas: new Set(),
         });
@@ -301,7 +334,7 @@ function PerformanceView() {
             r.data_hora_atendimento ? isoDay(r.data_hora_atendimento) : ""
           }`,
         );
-      if (!a.nome && r.nome_cupom) a.nome = r.nome_cupom;
+      if (!a.nome && registeredName) a.nome = registeredName;
     }
     return Array.from(map.values())
       .map((a) => ({
@@ -312,7 +345,9 @@ function PerformanceView() {
         ticket: a.comandas.size ? a.receita / a.comandas.size : 0,
       }))
       .sort((a, b) => b.receita - a.receita);
-  }, [filtered]);
+
+  }, [filtered, influencerMap]);
+
 
   const top15 = cuponsRanking.slice(0, 15);
 
