@@ -241,31 +241,9 @@ function ComparativoSection({
           </>
         )}
       </section>
-
-      {/* Section 2 */}
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">
-            Gerenciar unidades
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Área restrita — cadastro e edição das unidades inauguradas.
-          </p>
-        </div>
-
-        {adminPass ? (
-          <ManageInauguracoes
-            password={adminPass}
-            rows={rows}
-            reload={load}
-          />
-        ) : (
-          <PasswordGate onAuthed={setAdminPass} />
-        )}
-      </section>
-    </div>
   );
 }
+
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
