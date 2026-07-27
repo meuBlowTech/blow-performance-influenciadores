@@ -59,6 +59,14 @@ type Faturamento = {
   ultima_utilizacao: string | null;
 };
 
+type StatusCupons = {
+  cupons_cadastrados: number | null;
+  cupons_convertidos: number | null;
+  cupons_nao_convertidos: number | null;
+  taxa_conversao_pct: number | null;
+  receita_total: number | null;
+};
+
 function monthLabel(iso: string) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
@@ -70,6 +78,7 @@ export default function InfluenciadorasSection() {
   const [influs, setInflus] = useState<ClubeInflu[]>([]);
   const [mensal, setMensal] = useState<Mensal[]>([]);
   const [fatur, setFatur] = useState<Faturamento[]>([]);
+  const [statusCupons, setStatusCupons] = useState<StatusCupons | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -90,6 +99,7 @@ export default function InfluenciadorasSection() {
           { data: iData, error: iErr },
           { data: mData, error: mErr },
           { data: fData, error: fErr },
+          { data: sData, error: sErr },
         ] = await Promise.all([
           supabase
             .from("clube_influenciadoras")
@@ -101,14 +111,17 @@ export default function InfluenciadorasSection() {
             .from("clube_faturamento_por_influenciadora")
             .select("*")
             .order("receita_total", { ascending: false }),
+          supabase.from("clube_status_cupons").select("*").maybeSingle(),
         ]);
         if (iErr) throw iErr;
         if (mErr) throw mErr;
         if (fErr) throw fErr;
+        if (sErr) throw sErr;
         if (alive) {
           setInflus((iData as ClubeInflu[]) || []);
           setMensal((mData as Mensal[]) || []);
           setFatur((fData as Faturamento[]) || []);
+          setStatusCupons((sData as StatusCupons) || null);
         }
       } catch (e: unknown) {
         if (alive) setError(e instanceof Error ? e.message : String(e));
@@ -262,6 +275,33 @@ export default function InfluenciadorasSection() {
           onClick={() =>
             setActiveCard((c) => (c === "expirando" ? null : "expirando"))
           }
+        />
+      </section>
+
+      {/* Conversion cards (clube_status_cupons) */}
+      <section className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <ClickableKPI
+          label="Cupons cadastrados"
+          value={num(Number(statusCupons?.cupons_cadastrados || 0))}
+        />
+        <ClickableKPI
+          label="Convertidos"
+          value={num(Number(statusCupons?.cupons_convertidos || 0))}
+        />
+        <ClickableKPI
+          label="Não convertidos"
+          value={num(Number(statusCupons?.cupons_nao_convertidos || 0))}
+          tone="terracotta"
+        />
+        <ClickableKPI
+          label="Taxa de conversão"
+          value={`${Number(statusCupons?.taxa_conversao_pct || 0)
+            .toFixed(1)
+            .replace(".", ",")}%`}
+        />
+        <ClickableKPI
+          label="Faturamento total"
+          value={brl(Number(statusCupons?.receita_total || 0))}
         />
       </section>
 
