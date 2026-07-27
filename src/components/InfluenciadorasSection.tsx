@@ -152,11 +152,12 @@ export default function InfluenciadorasSection() {
   );
 
   // Unit options for filter
+  const { unidades: unidadesUnificadas } = useUnidadesUnificadas();
   const unidadeOptions = useMemo(() => {
-    const s = new Set<string>();
+    const s = new Set<string>(unidadesUnificadas);
     for (const f of fatur) if (f.unidade) s.add(f.unidade.trim());
     return Array.from(s).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [fatur]);
+  }, [fatur, unidadesUnificadas]);
 
   // Filter table
   const faturFiltered = useMemo(() => {
