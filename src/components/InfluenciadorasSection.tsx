@@ -278,6 +278,33 @@ export default function InfluenciadorasSection() {
         />
       </section>
 
+      {/* Conversion cards (clube_status_cupons) */}
+      <section className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <ClickableKPI
+          label="Cupons cadastrados"
+          value={num(Number(statusCupons?.cupons_cadastrados || 0))}
+        />
+        <ClickableKPI
+          label="Convertidos"
+          value={num(Number(statusCupons?.cupons_convertidos || 0))}
+        />
+        <ClickableKPI
+          label="Não convertidos"
+          value={num(Number(statusCupons?.cupons_nao_convertidos || 0))}
+          tone="terracotta"
+        />
+        <ClickableKPI
+          label="Taxa de conversão"
+          value={`${Number(statusCupons?.taxa_conversao_pct || 0)
+            .toFixed(1)
+            .replace(".", ",")}%`}
+        />
+        <ClickableKPI
+          label="Faturamento total"
+          value={brl(Number(statusCupons?.receita_total || 0))}
+        />
+      </section>
+
       {/* Monthly chart */}
       <section className="card-blow p-4 md:p-6">
         <div className="flex items-baseline justify-between gap-3 mb-4">
