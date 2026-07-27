@@ -116,7 +116,14 @@ function Dashboard() {
           </nav>
         </div>
       </header>
-      {activeTab === "performance" ? <PerformanceView /> : <CuradoriaView />}
+      {activeTab === "performance" ? (
+        <PerformanceView />
+      ) : activeTab === "influenciadores" ? (
+        <CuradoriaView />
+      ) : (
+        <ClubeView />
+      )}
+
     </div>
   );
 }
