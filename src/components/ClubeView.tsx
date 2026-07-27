@@ -561,7 +561,7 @@ function SolicitarTab({ influenciadoras }: { influenciadoras: ClubeInfluenciador
             <SelectContent>
               <SelectItem value="clube">Clube</SelectItem>
               <SelectItem value="pontual">Pontual</SelectItem>
-              <SelectItem value="barter">Barter</SelectItem>
+              <SelectItem value="inauguracao">Inauguração</SelectItem>
             </SelectContent>
           </Select>
         </Field>
