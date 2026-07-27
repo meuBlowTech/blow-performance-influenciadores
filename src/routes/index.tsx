@@ -165,6 +165,22 @@ function PerformanceView() {
     let alive = true;
     (async () => {
       setLoading(true);
+      // Load registered influencers first — restrict entire Performance tab
+      // to coupons cadastrados em clube_influenciadoras.
+      const { data: influData, error: influErr } = await supabase
+        .from("clube_influenciadoras")
+        .select("nome, codigo_cupom");
+      if (influErr) {
+        if (alive) setError(influErr.message);
+      }
+      const map = new Map<string, string>();
+      for (const i of (influData || []) as { nome: string | null; codigo_cupom: string | null }[]) {
+        for (const c of parseCodes(i.codigo_cupom)) {
+          if (!map.has(c)) map.set(c, (i.nome || "").trim());
+        }
+      }
+      if (alive) setInfluencerMap(map);
+
       // paginate to bypass 1000-row default
       const all: Row[] = [];
       const pageSize = 1000;
@@ -190,6 +206,7 @@ function PerformanceView() {
         setLoading(false);
       }
     })();
+
     return () => {
       alive = false;
     };
