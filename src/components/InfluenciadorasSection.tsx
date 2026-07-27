@@ -244,39 +244,8 @@ export default function InfluenciadorasSection() {
         </div>
       )}
 
-      {/* KPI cards */}
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <ClickableKPI
-          label="Ativas"
-          value={num(kpis.ativas)}
-          active={activeCard === "ativas"}
-          onClick={() =>
-            setActiveCard((c) => (c === "ativas" ? null : "ativas"))
-          }
-        />
-        <ClickableKPI
-          label="Unidades ativas"
-          value={num(kpis.unidadesAtivas)}
-        />
-        <ClickableKPI
-          label="Cupons expirados"
-          value={num(kpis.expirados)}
-          tone="terracotta"
-          active={activeCard === "expirados"}
-          onClick={() =>
-            setActiveCard((c) => (c === "expirados" ? null : "expirados"))
-          }
-        />
-        <ClickableKPI
-          label="Expirando em 30 dias"
-          value={num(kpis.expirando)}
-          tone="amber"
-          active={activeCard === "expirando"}
-          onClick={() =>
-            setActiveCard((c) => (c === "expirando" ? null : "expirando"))
-          }
-        />
-      </section>
+
+
 
       {/* Conversion cards (clube_status_cupons) */}
       <section className="grid grid-cols-2 lg:grid-cols-5 gap-4">
