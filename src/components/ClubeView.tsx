@@ -40,6 +40,7 @@ type ClubeSolicitacao = {
   unidade: string | null;
   outras_unidades: string | null;
   formato_parceria_sugerido: string | null;
+  codigo_cupom_sugerido: string | null;
   instagram: string | null;
   contato: string | null;
   observacao: string | null;
