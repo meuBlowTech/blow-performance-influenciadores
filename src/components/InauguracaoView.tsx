@@ -32,9 +32,6 @@ type Inauguracao = {
 const C = {
   greenDark: "#3D5F4A",
   green: "#6B9A73",
-  greenLight: "#A8CFA0",
-  terracotta: "#C6421E",
-  coral: "#D98B7A",
 };
 
 export default function InauguracaoView() {
@@ -194,17 +191,18 @@ export default function InauguracaoView() {
       <section className="space-y-4">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">
-            Adicionar nova unidade
+            Gerenciar unidades
           </h2>
           <p className="text-sm text-muted-foreground">
-            Área restrita — cadastro de inauguração.
+            Área restrita — cadastro e edição das unidades inauguradas.
           </p>
         </div>
 
         {adminPass ? (
-          <AddInauguracaoForm
+          <ManageInauguracoes
             password={adminPass}
-            onSaved={load}
+            rows={rows}
+            reload={load}
           />
         ) : (
           <PasswordGate onAuthed={setAdminPass} />
@@ -272,6 +270,155 @@ function PasswordGate({ onAuthed }: { onAuthed: (pw: string) => void }) {
   );
 }
 
+function ManageInauguracoes({
+  password,
+  rows,
+  reload,
+}: {
+  password: string;
+  rows: Inauguracao[];
+  reload: () => void | Promise<void>;
+}) {
+  const [q, setQ] = useState("");
+  const [showAdd, setShowAdd] = useState(false);
+
+  const filtered = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    if (!term) return rows;
+    return rows.filter((r) => r.estabelecimento?.toLowerCase().includes(term));
+  }, [rows, q]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-end gap-3 justify-between">
+        <div className="max-w-md flex-1 min-w-[240px]">
+          <Label className="text-xs text-muted-foreground">Buscar por estabelecimento</Label>
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Digite o nome…"
+          />
+        </div>
+        <Button
+          variant="outline"
+          onClick={() => setShowAdd((v) => !v)}
+        >
+          {showAdd ? "Cancelar" : "+ Adicionar unidade"}
+        </Button>
+      </div>
+
+      {showAdd && (
+        <AddInauguracaoForm
+          password={password}
+          onSaved={async () => {
+            await reload();
+            setShowAdd(false);
+          }}
+        />
+      )}
+
+      <div
+        className="grid gap-4"
+        style={{ gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))" }}
+      >
+        {filtered.map((r) => (
+          <EditRow key={r.id} r={r} password={password} onSaved={reload} />
+        ))}
+      </div>
+      {filtered.length === 0 && (
+        <p className="text-sm text-muted-foreground">Nenhuma unidade encontrada.</p>
+      )}
+    </div>
+  );
+}
+
+function EditRow({
+  r,
+  password,
+  onSaved,
+}: {
+  r: Inauguracao;
+  password: string;
+  onSaved: () => void | Promise<void>;
+}) {
+  const initial = {
+    estabelecimento: r.estabelecimento ?? "",
+    data_inauguracao: r.data_inauguracao ?? "",
+    uf: r.uf ?? "",
+  };
+  const [form, setForm] = useState(initial);
+  const [saving, setSaving] = useState(false);
+
+  const upd = (k: keyof typeof form) => (v: string) =>
+    setForm((prev) => ({ ...prev, [k]: v }));
+
+  const save = async () => {
+    setSaving(true);
+    const diff = (a: string, b: string) => (a === b ? null : a);
+    const payload = {
+      p_id: r.id,
+      p_password: password,
+      p_estabelecimento: diff(form.estabelecimento.trim(), initial.estabelecimento),
+      p_data_inauguracao: diff(form.data_inauguracao, initial.data_inauguracao),
+      p_uf: diff(
+        form.uf.trim() ? form.uf.trim().toUpperCase() : "",
+        initial.uf,
+      ),
+    };
+    const { data, error } = await supabase.rpc("clube_atualizar_inauguracao", payload);
+    setSaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    const msg = (data as { message?: string } | null)?.message ?? "Salvo";
+    const ok = (data as { ok?: boolean; success?: boolean } | null);
+    const okFlag = ok?.ok !== false && ok?.success !== false;
+    (okFlag ? toast.success : toast.error)(msg);
+    if (okFlag) await onSaved();
+  };
+
+  return (
+    <div className="card-blow p-5 space-y-3">
+      <h4 className="font-semibold text-[color:var(--color-blow-green-dark)] leading-tight">
+        {r.estabelecimento}
+      </h4>
+      <p className="text-xs text-muted-foreground -mt-2">
+        Inaugurada em {dateBR(r.data_inauguracao)}
+        {r.uf ? ` · ${r.uf}` : ""}
+      </p>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-2 space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Estabelecimento</Label>
+          <Input
+            value={form.estabelecimento}
+            onChange={(e) => upd("estabelecimento")(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Data de inauguração</Label>
+          <Input
+            type="date"
+            value={form.data_inauguracao}
+            onChange={(e) => upd("data_inauguracao")(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">UF</Label>
+          <Input
+            value={form.uf}
+            onChange={(e) => upd("uf")(e.target.value.toUpperCase().slice(0, 2))}
+            maxLength={2}
+          />
+        </div>
+      </div>
+      <Button onClick={save} disabled={saving} className="w-full">
+        {saving ? "Salvando…" : "Salvar"}
+      </Button>
+    </div>
+  );
+}
+
 function AddInauguracaoForm({
   password,
   onSaved,
@@ -318,7 +465,10 @@ function AddInauguracaoForm({
   };
 
   return (
-    <form onSubmit={submit} className="card-blow p-6 space-y-4 max-w-2xl">
+    <form onSubmit={submit} className="card-blow p-6 space-y-4">
+      <h3 className="font-semibold text-[color:var(--color-blow-green-dark)]">
+        Adicionar nova unidade
+      </h3>
       <div className="space-y-1.5">
         <Label htmlFor="estab">Nome do estabelecimento *</Label>
         <Input
