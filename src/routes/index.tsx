@@ -223,10 +223,18 @@ function PerformanceView() {
   const allCupons = useMemo(
     () =>
       Array.from(
-        new Set(rows.map((r) => r.codigo_cupom).filter(Boolean) as string[]),
+        new Set(
+          rows
+            .map((r) => r.codigo_cupom)
+            .filter(
+              (c): c is string =>
+                !!c && influencerMap.has(c.trim().toUpperCase()),
+            ),
+        ),
       ).sort((a, b) => a.localeCompare(b, "pt-BR")),
-    [rows],
+    [rows, influencerMap],
   );
+
 
   const filtered = useMemo(() => {
     const startTs = dateStart ? new Date(dateStart).setHours(0, 0, 0, 0) : null;
