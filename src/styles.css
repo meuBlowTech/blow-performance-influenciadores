@@ -37,15 +37,27 @@
   --color-ring: var(--ring);
 
   /* bLOw brand tokens */
-  --color-blow-green-dark: var(--blow-green-dark);
-  --color-blow-green: var(--blow-green);
-  --color-blow-green-light: var(--blow-green-light);
+  --color-blow-orange-dark: var(--blow-orange-dark);
+  --color-blow-orange: var(--blow-orange);
+  --color-blow-orange-light: var(--blow-orange-light);
   --color-blow-terracotta: var(--blow-terracotta);
   --color-blow-coral: var(--blow-coral);
   --color-blow-pink-light: var(--blow-pink-light);
   --color-blow-pink-mute: var(--blow-pink-mute);
   --color-blow-neutral: var(--blow-neutral);
   --color-blow-neutral-dark: var(--blow-neutral-dark);
+  --color-blow-green-dark: var(--blow-green-dark);
+  --color-blow-green: var(--blow-green);
+  --color-blow-green-light: var(--blow-green-light);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
 
   --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
@@ -54,37 +66,57 @@
 :root {
   --radius: 0.75rem;
 
-  /* bLOw palette (hex → oklch approx via mix) */
-  --blow-green-dark: oklch(0.42 0.045 150);       /* #3D5F4A */
-  --blow-green: oklch(0.6 0.07 148);              /* #6B9A73 */
-  --blow-green-light: oklch(0.8 0.08 140);        /* #A8CFA0 */
-  --blow-terracotta: oklch(0.55 0.17 40);         /* #C6421E */
-  --blow-coral: oklch(0.7 0.09 30);               /* #D98B7A */
-  --blow-pink-light: oklch(0.9 0.025 25);         /* #F2D9D2 */
-  --blow-pink-mute: oklch(0.79 0.03 20);          /* #D9B3B0 */
-  --blow-neutral: oklch(0.9 0.002 100);           /* #E2E2E0 */
-  --blow-neutral-dark: oklch(0.82 0.002 100);     /* #C9C9C7 */
+  /*
+   * bLOw palette — tema dark. Laranja continua a cor dominante (marca),
+   * verde/vermelho/âmbar como status — só que agora com papéis invertidos
+   * de claridade: os tons "-dark" (usados como texto/heading em cima de
+   * fundo claro no tema anterior) precisam ser CLAROS e vívidos pra ler
+   * bem em cima do fundo quase-preto. Os tons "-light" (antes fundos
+   * suaves claros) viram tons escuros sutis, mantendo o mesmo papel de
+   * "realce suave" — só que suave em cima de escuro.
+   */
+  --blow-orange-dark: oklch(0.72 0.15 48);        /* laranja vívido — títulos, números de destaque */
+  --blow-orange: oklch(0.7 0.17 50);              /* botões, realces, anéis de foco */
+  --blow-orange-light: oklch(0.76 0.13 55);       /* realces/hover suaves (usado com opacidade) */
+  --blow-terracotta: oklch(0.64 0.19 24);         /* crítico/expirado (vermelho vívido) */
+  --blow-coral: oklch(0.78 0.14 74);              /* aviso/expirando (âmbar) */
+  --blow-pink-light: oklch(0.32 0.035 40);        /* fundo suave neutro (usado com opacidade) */
+  --blow-pink-mute: oklch(0.58 0.07 45);          /* realce suave secundário */
+  --blow-neutral: oklch(0.3 0.015 40);            /* bordas padrão */
+  --blow-neutral-dark: oklch(0.38 0.02 40);       /* bordas fortes */
+  --blow-green-dark: oklch(0.72 0.13 150);        /* status "ativo/bom" — verde vívido */
+  --blow-green: oklch(0.62 0.13 150);             /* badges "ativa", ação de aprovar */
+  --blow-green-light: oklch(0.34 0.05 150);       /* tonalidade "saudável" — fundo suave */
 
-  --background: oklch(0.985 0.004 95);            /* #FAFAF8 */
-  --foreground: var(--blow-green-dark);
-  --card: oklch(1 0 0);
-  --card-foreground: var(--blow-green-dark);
-  --popover: oklch(1 0 0);
-  --popover-foreground: var(--blow-green-dark);
+  --background: oklch(0.15 0.012 40);             /* quase-preto quente */
+  --foreground: oklch(0.95 0.01 50);              /* quase-branco quente — texto padrão */
+  --card: oklch(0.19 0.014 40);                   /* superfície dos cards, um tom acima do fundo */
+  --card-foreground: var(--foreground);
+  --popover: oklch(0.19 0.014 40);
+  --popover-foreground: var(--foreground);
 
-  --primary: var(--blow-green-dark);
-  --primary-foreground: oklch(0.985 0.004 95);
-  --secondary: var(--blow-pink-light);
-  --secondary-foreground: var(--blow-green-dark);
-  --muted: oklch(0.955 0.005 90);
-  --muted-foreground: oklch(0.45 0.01 150);
-  --accent: var(--blow-terracotta);
-  --accent-foreground: oklch(0.985 0.004 95);
-  --destructive: oklch(0.55 0.22 27);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: var(--blow-neutral);
-  --input: var(--blow-neutral);
-  --ring: var(--blow-green);
+  --primary: var(--blow-orange);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.24 0.02 40);
+  --secondary-foreground: var(--foreground);
+  --muted: oklch(0.22 0.015 40);
+  --muted-foreground: oklch(0.65 0.02 45);
+  --accent: oklch(0.26 0.03 45);
+  --accent-foreground: var(--foreground);
+  --destructive: oklch(0.6 0.2 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.28 0.015 40);
+  --input: var(--border);
+  --ring: var(--blow-orange);
+
+  --sidebar: var(--background);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--blow-orange);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.22 0.02 40);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--blow-orange);
 }
 
 @layer base {
@@ -114,6 +146,6 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
   box-shadow:
-    0 1px 2px oklch(0 0 0 / 0.03),
-    0 8px 24px -12px oklch(0.42 0.045 150 / 0.08);
+    0 1px 2px oklch(0 0 0 / 0.3),
+    0 8px 24px -12px oklch(0 0 0 / 0.5);
 }

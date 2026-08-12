@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  Area,
   Bar,
   CartesianGrid,
   ComposedChart,
@@ -10,20 +11,25 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { CheckCircle2, DollarSign, Percent, Ticket, XCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { brl, dateBR, num } from "@/lib/format";
+import { brl, dateBR, num, parseLocalDate } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useUnidadesUnificadas } from "@/hooks/useUnidadesUnificadas";
+import { DateRangePicker } from "@/components/DateRangePicker";
+import { KpiCard } from "@/components/KpiCard";
 
 const C = {
-  greenDark: "#3D5F4A",
-  green: "#6B9A73",
-  greenLight: "#A8CFA0",
-  terracotta: "#C6421E",
-  coral: "#D98B7A",
+  greenDark: "var(--color-blow-orange-dark)",
+  green: "var(--color-blow-orange)",
+  greenLight: "var(--color-blow-orange-light)",
+  coral: "var(--color-blow-coral)",
+  // Linha de receita usa verde propositalmente — dá contraste real num
+  // gráfico com 4 séries, e "dinheiro em verde" é uma leitura imediata.
+  receita: "var(--color-blow-green)",
 };
 
 type ClubeInflu = {
@@ -69,7 +75,7 @@ type StatusCupons = {
 };
 
 function monthLabel(iso: string) {
-  const d = new Date(iso);
+  const d = parseLocalDate(iso);
   if (Number.isNaN(d.getTime())) return iso;
   const mes = d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "");
   return `${mes}/${d.getFullYear()}`;
@@ -90,6 +96,8 @@ export default function InfluenciadorasSection() {
   const [busca, setBusca] = useState("");
   const [unidadeFilter, setUnidadeFilter] = useState<string>("");
   const [expand, setExpand] = useState(false);
+  const [periodStart, setPeriodStart] = useState<Date | undefined>();
+  const [periodEnd, setPeriodEnd] = useState<Date | undefined>();
 
   useEffect(() => {
     let alive = true;
@@ -141,14 +149,31 @@ export default function InfluenciadorasSection() {
   // Chart data
   const chartData = useMemo(
     () =>
-      mensal.map((m) => ({
-        mes: monthLabel(m.mes),
-        emitidos: Number(m.cupons_emitidos_acumulado || 0),
-        utilizados: Number(m.cupons_utilizados_distintos || 0),
-        atendimentos: Number(m.atendimentos || 0),
-        receita: Number(m.receita || 0),
-      })),
-    [mensal],
+      mensal
+        .filter((m) => {
+          const d = parseLocalDate(m.mes);
+          if (Number.isNaN(d.getTime())) return true;
+          if (periodStart) {
+            const start = new Date(periodStart);
+            start.setDate(1);
+            start.setHours(0, 0, 0, 0);
+            if (d < start) return false;
+          }
+          if (periodEnd) {
+            const end = new Date(periodEnd);
+            end.setHours(23, 59, 59, 999);
+            if (d > end) return false;
+          }
+          return true;
+        })
+        .map((m) => ({
+          mes: monthLabel(m.mes),
+          emitidos: Number(m.cupons_emitidos_acumulado || 0),
+          utilizados: Number(m.cupons_utilizados_distintos || 0),
+          atendimentos: Number(m.atendimentos || 0),
+          receita: Number(m.receita || 0),
+        })),
+    [mensal, periodStart, periodEnd],
   );
 
   // Unit options for filter
@@ -194,63 +219,71 @@ export default function InfluenciadorasSection() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-[color:var(--color-blow-green-dark)]">
-          Panorama das influenciadoras
-        </h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Cupons emitidos, utilização mensal e faturamento gerado por cada
-          embaixadora.
-        </p>
-      </div>
-
       {error && (
         <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           Erro ao carregar dados: {error}
         </div>
       )}
 
-
-
+      {/* Período — guia a visualização da página como um todo */}
+      <DateRangePicker
+        label="Período"
+        start={periodStart}
+        end={periodEnd}
+        onChange={(s, e) => {
+          setPeriodStart(s);
+          setPeriodEnd(e);
+        }}
+      />
 
       {/* Conversion cards (clube_status_cupons) */}
       <section className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <ClickableKPI
+        <KpiCard
+          icon={Ticket}
           label="Cupons cadastrados"
           value={num(Number(statusCupons?.cupons_cadastrados || 0))}
+          description="Total no clube"
         />
-        <ClickableKPI
+        <KpiCard
+          icon={CheckCircle2}
           label="Convertidos"
           value={num(Number(statusCupons?.cupons_convertidos || 0))}
+          description="Com uso registrado"
+          tone="green"
         />
-        <ClickableKPI
+        <KpiCard
+          icon={XCircle}
           label="Não convertidos"
           value={num(Number(statusCupons?.cupons_nao_convertidos || 0))}
+          description="Sem uso até agora"
           tone="terracotta"
         />
-        <ClickableKPI
+        <KpiCard
+          icon={Percent}
           label="Taxa de conversão"
           value={`${Number(statusCupons?.taxa_conversao_pct || 0)
             .toFixed(1)
             .replace(".", ",")}%`}
+          description="Convertidos ÷ cadastrados"
         />
-        <ClickableKPI
+        <KpiCard
+          icon={DollarSign}
           label="Faturamento total"
           value={brl(Number(statusCupons?.receita_total || 0))}
+          description="Gerado pelo clube"
+          tone="green"
         />
       </section>
 
       {/* Monthly chart */}
       <section className="card-blow p-4 md:p-6">
-        <div className="flex items-baseline justify-between gap-3 mb-4">
-          <div>
-            <h3 className="text-lg font-semibold text-[color:var(--color-blow-green-dark)]">
-              Cupons emitidos × utilizados por mês
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Acumulado de emissões, uso no mês, atendimentos e receita.
-            </p>
-          </div>
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold text-[color:var(--color-blow-orange-dark)]">
+            Cupons emitidos × utilizados por mês
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Acumulado de emissões, uso no mês, atendimentos e receita.
+          </p>
         </div>
         <div className="h-[360px]">
           {loading ? (
@@ -267,34 +300,60 @@ export default function InfluenciadorasSection() {
                 data={chartData}
                 margin={{ top: 8, right: 16, left: 0, bottom: 8 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="#E2E2E0" />
-                <XAxis dataKey="mes" tick={{ fontSize: 12 }} />
+                <defs>
+                  <linearGradient id="emitidosGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={C.greenDark} stopOpacity={0.22} />
+                    <stop offset="100%" stopColor={C.greenDark} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis
+                  dataKey="mes"
+                  tick={{ fontSize: 12, fill: "var(--color-muted-foreground)" }}
+                />
                 <YAxis
                   yAxisId="left"
-                  tick={{ fontSize: 12 }}
+                  tick={{ fontSize: 12, fill: "var(--color-muted-foreground)" }}
                   allowDecimals={false}
                 />
                 <YAxis
                   yAxisId="right"
                   orientation="right"
-                  tick={{ fontSize: 12 }}
+                  tick={{ fontSize: 12, fill: "var(--color-muted-foreground)" }}
                   tickFormatter={(v) =>
                     v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)
                   }
                 />
                 <Tooltip
+                  contentStyle={{
+                    background: "var(--color-card)",
+                    border: "1px solid var(--color-border)",
+                    borderRadius: 10,
+                    fontSize: 12,
+                    color: "var(--color-foreground)",
+                  }}
+                  labelStyle={{ color: "var(--color-foreground)", fontWeight: 600 }}
                   formatter={(value: number, name: string) => {
                     if (name === "Receita") return [brl(Number(value)), name];
                     return [num(Number(value)), name];
                   }}
                 />
-                <Legend />
+                <Legend wrapperStyle={{ color: "var(--color-muted-foreground)" }} />
                 <Bar
                   yAxisId="left"
                   dataKey="utilizados"
                   name="Cupons utilizados no mês"
                   fill={C.greenLight}
                   radius={[4, 4, 0, 0]}
+                />
+                <Area
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="emitidos"
+                  stroke="none"
+                  fill="url(#emitidosGradient)"
+                  legendType="none"
+                  isAnimationActive={false}
                 />
                 <Line
                   yAxisId="left"
@@ -320,7 +379,7 @@ export default function InfluenciadorasSection() {
                   type="monotone"
                   dataKey="receita"
                   name="Receita"
-                  stroke={C.terracotta}
+                  stroke={C.receita}
                   strokeWidth={2}
                   dot={{ r: 2 }}
                 />
@@ -334,7 +393,7 @@ export default function InfluenciadorasSection() {
       <section className="card-blow p-4 md:p-6">
         <div className="flex flex-wrap items-baseline justify-between gap-3 mb-4">
           <div>
-            <h3 className="text-lg font-semibold text-[color:var(--color-blow-green-dark)]">
+            <h3 className="text-lg font-semibold text-[color:var(--color-blow-orange-dark)]">
               Faturamento por influenciadora
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -471,44 +530,3 @@ export default function InfluenciadorasSection() {
   );
 }
 
-function ClickableKPI({
-  label,
-  value,
-  active,
-  onClick,
-  tone,
-}: {
-  label: string;
-  value: string;
-  active?: boolean;
-  onClick?: () => void;
-  tone?: "terracotta" | "amber";
-}) {
-  const clickable = Boolean(onClick);
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={!clickable}
-      className={cn(
-        "card-blow p-5 md:p-6 relative overflow-hidden text-left transition-all",
-        clickable && "hover:shadow-md cursor-pointer",
-        active && "ring-2 ring-[color:var(--color-blow-green)]",
-        !clickable && "cursor-default",
-      )}
-    >
-      <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-        {label}
-      </div>
-      <div className="mt-3 text-3xl md:text-[2rem] font-semibold tabular-nums tracking-tight">
-        {value}
-      </div>
-      {tone === "terracotta" && (
-        <div className="absolute right-0 bottom-0 h-1.5 w-24 bg-[color:var(--color-blow-terracotta)]" />
-      )}
-      {tone === "amber" && (
-        <div className="absolute right-0 bottom-0 h-1.5 w-24 bg-amber-500" />
-      )}
-    </button>
-  );
-}

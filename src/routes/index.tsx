@@ -1,10 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
+  Area,
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
+  ComposedChart,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -12,9 +14,42 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Calendar as CalendarIcon, Download, X } from "lucide-react";
+import {
+  AlertCircle,
+  AlertTriangle,
+  Bell,
+  Building2,
+  DollarSign,
+  Download,
+  LayoutDashboard,
+  Lock,
+  PartyPopper,
+  Receipt,
+  Search,
+  ShieldCheck,
+  Ticket,
+  TrendingUp,
+  Users,
+  Users2,
+  X,
+  Zap,
+} from "lucide-react";
+import { KpiCard } from "@/components/KpiCard";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { supabase, type ConsumoCupom, type CupomEmitido, type Unidade } from "@/lib/supabase";
 import {
@@ -26,37 +61,36 @@ import {
   num,
   toCSV,
 } from "@/lib/format";
+import { parseCodes } from "@/lib/coupons";
+import { comandaKey, extractUF } from "@/lib/inauguracoes";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
 import ClubeView from "@/components/ClubeView";
+import AdminView from "@/components/AdminView";
 import InauguracaoView from "@/components/InauguracaoView";
 import InfluenciadorasSection from "@/components/InfluenciadorasSection";
+import { DateRangePicker } from "@/components/DateRangePicker";
+import { MultiFilter } from "@/components/MultiFilter";
 
 
 export const Route = createFileRoute("/")({
   component: Dashboard,
 });
 
-// bLOw palette (hex — for chart fills, since Recharts precisa de cor concreta)
+// bLOw palette (referencia os tokens de --color-blow-* em styles.css — Recharts
+// aceita var() como valor de stroke/fill normalmente, então os gráficos já
+// acompanham o tema automaticamente)
 const C = {
-  greenDark: "#3D5F4A",
-  green: "#6B9A73",
-  greenLight: "#A8CFA0",
-  terracotta: "#C6421E",
-  coral: "#D98B7A",
-  pinkLight: "#F2D9D2",
-  pinkMute: "#D9B3B0",
-  neutral: "#E2E2E0",
-  neutralDark: "#C9C9C7",
+  greenDark: "var(--color-blow-orange-dark)",
+  green: "var(--color-blow-orange)",
+  greenLight: "var(--color-blow-orange-light)",
+  terracotta: "var(--color-blow-terracotta)",
+  coral: "var(--color-blow-coral)",
+  pinkLight: "var(--color-blow-pink-light)",
+  pinkMute: "var(--color-blow-pink-mute)",
+  neutral: "var(--color-border)",
+  neutralDark: "var(--color-blow-neutral-dark)",
 };
+const STATUS_GREEN = "var(--color-blow-green)";
 
 const BAR_PALETTE = [
   C.green,
@@ -78,58 +112,145 @@ const BAR_PALETTE = [
 
 type Row = ConsumoCupom;
 
+const NAV_SECTIONS = [
+  {
+    id: "performance",
+    label: "Geral",
+    subtitle: "Visão consolidada de receita, cupons e desempenho da rede bLOw.",
+    icon: LayoutDashboard,
+  },
+  {
+    id: "influenciadores",
+    label: "Performance",
+    subtitle: "Cupons emitidos, utilização mensal e faturamento gerado por cada influenciadora.",
+    icon: TrendingUp,
+  },
+  {
+    id: "inauguracao",
+    label: "Inaugurações",
+    subtitle: "Performance das unidades recém-inauguradas.",
+    icon: PartyPopper,
+  },
+  {
+    id: "clube",
+    label: "Influenciadores",
+    subtitle: "Cadastro de influenciadoras e acompanhamento de cupons sem dono.",
+    icon: Users2,
+  },
+] as const;
+
+const ADMIN_SECTION = {
+  id: "admin",
+  label: "Administração",
+  subtitle: "Aprovações, edição de influenciadoras, unidades e inaugurações — acesso restrito ao time de marketing franqueadora.",
+  icon: Lock,
+} as const;
+
 function Dashboard() {
-  const [activeTab, setActiveTab] = useState<"performance" | "influenciadores" | "clube" | "inauguracao">("performance");
+  const [activeTab, setActiveTab] = useState<
+    "performance" | "influenciadores" | "clube" | "inauguracao" | "admin"
+  >("performance");
+  const active =
+    NAV_SECTIONS.find((s) => s.id === activeTab) ?? ADMIN_SECTION;
+
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-[color:var(--color-blow-green-dark)] text-primary-foreground">
-        <div className="mx-auto max-w-[1400px] px-6 pt-6 md:pt-8">
-          <div className="flex items-baseline gap-3">
-            <h1 className="text-3xl md:text-4xl font-medium tracking-tight">
-              b<span className="italic">L</span>Ow
-            </h1>
-            <span className="text-xs md:text-sm uppercase tracking-[0.25em] text-[color:var(--color-blow-green-light)]">
-              Performance de influência
-            </span>
+    <SidebarProvider>
+      <Sidebar>
+        <SidebarHeader className="px-3 py-4">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[color:var(--color-blow-orange)] text-white">
+              <Zap className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-lg font-semibold leading-none tracking-tight">
+                b<span className="italic">L</span>Ow
+              </div>
+              <div className="mt-0.5 text-[11px] leading-tight text-muted-foreground">
+                Performance de Influência
+              </div>
+            </div>
           </div>
-          <p className="mt-2 text-sm text-[color:var(--color-blow-pink-light)]/90">
-            Acompanhe receita, cupons e curadoria de parcerias em tempo real.
-          </p>
-          <nav className="mt-6 flex gap-1 -mb-px">
-            {([
-              { id: "performance", label: "Performance" },
-              { id: "influenciadores", label: "Influenciadores" },
-              { id: "clube", label: "Clube de Embaixadoras" },
-              { id: "inauguracao", label: "Inauguração" },
-            ] as const).map((t) => (
-
-              <button
-                key={t.id}
-                onClick={() => setActiveTab(t.id)}
-                className={cn(
-                  "px-5 py-2.5 text-sm font-medium rounded-t-lg border border-b-0 transition-colors",
-                  activeTab === t.id
-                    ? "bg-background text-[color:var(--color-blow-green-dark)] border-border"
-                    : "bg-transparent text-[color:var(--color-blow-pink-light)]/80 border-transparent hover:text-primary-foreground",
-                )}
-              >
-                {t.label}
-              </button>
-            ))}
-          </nav>
+        </SidebarHeader>
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupLabel>Navegação</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {NAV_SECTIONS.map((s) => (
+                  <SidebarMenuItem key={s.id}>
+                    <SidebarMenuButton
+                      size="lg"
+                      isActive={activeTab === s.id}
+                      onClick={() => setActiveTab(s.id)}
+                    >
+                      <s.icon />
+                      <span>{s.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+          <SidebarGroup>
+            <SidebarGroupLabel>Administração</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    size="lg"
+                    isActive={activeTab === ADMIN_SECTION.id}
+                    onClick={() => setActiveTab(ADMIN_SECTION.id)}
+                  >
+                    <Lock />
+                    <span>{ADMIN_SECTION.label}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+      </Sidebar>
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center gap-3 border-b border-border px-4 md:px-6">
+          <SidebarTrigger />
+          <div className="relative max-w-md flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Buscar unidades, cupons, influenciadoras…"
+              className="h-9 w-full rounded-md border border-input bg-muted pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </div>
+          <button
+            type="button"
+            aria-label="Notificações"
+            className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <Bell className="h-4.5 w-4.5" />
+          </button>
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[color:var(--color-blow-orange)]/20 text-sm font-semibold text-[color:var(--color-blow-orange)]">
+            BL
+          </div>
+        </header>
+        <div className="px-4 pt-6 md:px-6">
+          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
+            {active.label}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">{active.subtitle}</p>
         </div>
-      </header>
-      {activeTab === "performance" ? (
-        <PerformanceView />
-      ) : activeTab === "influenciadores" ? (
-        <CuradoriaView />
-      ) : activeTab === "clube" ? (
-        <ClubeView />
-      ) : (
-        <InauguracaoView />
-      )}
-
-    </div>
+        {activeTab === "performance" ? (
+          <PerformanceView />
+        ) : activeTab === "influenciadores" ? (
+          <CuradoriaView />
+        ) : activeTab === "clube" ? (
+          <ClubeView />
+        ) : activeTab === "inauguracao" ? (
+          <InauguracaoView />
+        ) : (
+          <AdminView />
+        )}
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
 
@@ -140,10 +261,10 @@ function PerformanceView() {
   const [error, setError] = useState<string | null>(null);
 
 
-  // filters
+  // filters — abre sempre com o compilado do mês atual até ontem
   const [dateStart, setDateStart] = useState<Date | undefined>(() => {
     const d = new Date();
-    d.setDate(d.getDate() - 1);
+    d.setDate(1);
     d.setHours(0, 0, 0, 0);
     return d;
   });
@@ -266,10 +387,6 @@ function PerformanceView() {
       (s, r) => s + (Number(r.valor_liquido) || 0),
       0,
     );
-    const comandaKey = (r: Row) =>
-      `${r.estabelecimento ?? ""}||${r.comanda ?? ""}||${
-        r.data_hora_atendimento ? isoDay(r.data_hora_atendimento) : ""
-      }`;
     const comandas = new Set(
       filtered.filter((r) => r.comanda).map(comandaKey),
     );
@@ -495,7 +612,7 @@ function PerformanceView() {
         {/* Filters */}
         <section className="card-blow p-4 md:p-6">
           <div className="flex flex-wrap items-end gap-3 md:gap-4">
-            <DateRange
+            <DateRangePicker
               label="Período"
               start={dateStart}
               end={dateEnd}
@@ -537,7 +654,7 @@ function PerformanceView() {
                 size="sm"
                 onClick={exportRankingCSV}
                 disabled={cuponsRanking.length === 0}
-                className="bg-[color:var(--color-blow-green-dark)] hover:bg-[color:var(--color-blow-green-dark)]/90"
+                className="bg-[color:var(--color-blow-orange-dark)] hover:bg-[color:var(--color-blow-orange-dark)]/90"
               >
                 <Download className="mr-1 h-4 w-4" /> Ranking cupons
               </Button>
@@ -547,14 +664,31 @@ function PerformanceView() {
 
         {/* KPIs */}
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <KPI
+          <KpiCard
+            icon={DollarSign}
             label="Receita total"
             value={brl(kpis.receita)}
-            accent="terracotta"
+            description="No período filtrado"
+            tone="terracotta"
           />
-          <KPI label="Ticket médio" value={brl(kpis.ticket)} />
-          <KPI label="Atendimentos" value={num(kpis.nAtend)} />
-          <KPI label="Cupons ativos" value={num(kpis.cuponsAtivos)} />
+          <KpiCard
+            icon={Receipt}
+            label="Ticket médio"
+            value={brl(kpis.ticket)}
+            description="Média por atendimento"
+          />
+          <KpiCard
+            icon={Users}
+            label="Atendimentos"
+            value={num(kpis.nAtend)}
+            description="Comandas únicas no período"
+          />
+          <KpiCard
+            icon={Ticket}
+            label="Cupons ativos"
+            value={num(kpis.cuponsAtivos)}
+            description="Usados no período filtrado"
+          />
         </section>
 
         {/* Time series */}
@@ -574,7 +708,7 @@ function PerformanceView() {
                   className={cn(
                     "px-4 py-1.5 text-xs font-medium rounded-full transition-colors",
                     chartMode === m
-                      ? "bg-[color:var(--color-blow-green-dark)] text-primary-foreground"
+                      ? "bg-[color:var(--color-blow-orange-dark)] text-primary-foreground"
                       : "text-muted-foreground hover:text-foreground",
                   )}
                 >
@@ -588,33 +722,47 @@ function PerformanceView() {
               <EmptyState loading={loading} />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart
+                <ComposedChart
                   data={timeSeries}
                   margin={{ top: 10, right: 20, bottom: 20, left: 10 }}
                 >
-                  <CartesianGrid stroke={C.neutral} vertical={false} />
+                  <defs>
+                    <linearGradient id="receitaGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={C.greenDark} stopOpacity={0.35} />
+                      <stop offset="100%" stopColor={C.greenDark} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke="var(--color-border)" vertical={false} />
                   <XAxis
                     dataKey="label"
-                    tick={{ fill: C.greenDark, fontSize: 11 }}
-                    stroke={C.neutralDark}
+                    tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
+                    stroke="var(--color-blow-neutral-dark)"
                     minTickGap={20}
                   />
                   <YAxis
-                    tick={{ fill: C.greenDark, fontSize: 11 }}
-                    stroke={C.neutralDark}
+                    tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
+                    stroke="var(--color-blow-neutral-dark)"
                     tickFormatter={(v) =>
                       v >= 1000 ? `R$ ${(v / 1000).toFixed(0)}k` : `R$ ${v}`
                     }
                   />
                   <Tooltip
                     contentStyle={{
-                      background: "#fff",
-                      border: `1px solid ${C.neutral}`,
+                      background: "var(--color-card)",
+                      border: "1px solid var(--color-border)",
                       borderRadius: 10,
                       fontSize: 12,
+                      color: "var(--color-foreground)",
                     }}
-                    labelStyle={{ color: C.greenDark, fontWeight: 600 }}
+                    labelStyle={{ color: "var(--color-foreground)", fontWeight: 600 }}
                     formatter={(v: number) => [brl(v), "Receita"]}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="receita"
+                    stroke="none"
+                    fill="url(#receitaGradient)"
+                    isAnimationActive={false}
                   />
                   <Line
                     type="monotone"
@@ -624,7 +772,7 @@ function PerformanceView() {
                     dot={{ r: 3, fill: C.terracotta, stroke: C.terracotta }}
                     activeDot={{ r: 5, fill: C.terracotta }}
                   />
-                </LineChart>
+                </ComposedChart>
               </ResponsiveContainer>
             )}
           </div>
@@ -651,11 +799,11 @@ function PerformanceView() {
                   layout="vertical"
                   margin={{ top: 5, right: 30, bottom: 5, left: 20 }}
                 >
-                  <CartesianGrid stroke={C.neutral} horizontal={false} />
+                  <CartesianGrid stroke="var(--color-border)" horizontal={false} />
                   <XAxis
                     type="number"
-                    tick={{ fill: C.greenDark, fontSize: 11 }}
-                    stroke={C.neutralDark}
+                    tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
+                    stroke="var(--color-blow-neutral-dark)"
                     tickFormatter={(v) =>
                       v >= 1000 ? `R$ ${(v / 1000).toFixed(0)}k` : `R$ ${v}`
                     }
@@ -664,15 +812,16 @@ function PerformanceView() {
                     type="category"
                     dataKey="label"
                     width={220}
-                    tick={{ fill: C.greenDark, fontSize: 11 }}
-                    stroke={C.neutralDark}
+                    tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
+                    stroke="var(--color-blow-neutral-dark)"
                   />
                   <Tooltip
                     contentStyle={{
-                      background: "#fff",
-                      border: `1px solid ${C.neutral}`,
+                      background: "var(--color-card)",
+                      border: "1px solid var(--color-border)",
                       borderRadius: 10,
                       fontSize: 12,
+                      color: "var(--color-foreground)",
                     }}
                     formatter={(v: number) => [brl(v), "Receita"]}
                   />
@@ -700,7 +849,7 @@ function PerformanceView() {
           </div>
           <div className="overflow-x-auto rounded-xl border border-border mb-6">
             <table className="w-full text-sm">
-              <thead className="bg-[color:var(--color-blow-pink-light)]/60 text-[color:var(--color-blow-green-dark)]">
+              <thead className="bg-[color:var(--color-blow-pink-light)]/60 text-[color:var(--color-blow-orange-dark)]">
                 <tr>
                   <Th>Influenciadora</Th>
                   <Th className="text-right">Nº cupons utilizados</Th>
@@ -736,7 +885,7 @@ function PerformanceView() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setExpandInfluencers((v) => !v)}
-                className="text-[color:var(--color-blow-green-dark)] hover:bg-[color:var(--color-blow-green-light)]/20"
+                className="text-[color:var(--color-blow-orange-dark)] hover:bg-[color:var(--color-blow-orange-light)]/20"
               >
                 {expandInfluencers ? "Ver menos" : "Ver mais"}
               </Button>
@@ -767,7 +916,7 @@ function PerformanceView() {
                     className={cn(
                       "px-4 py-1.5 text-xs font-medium rounded-full transition-colors",
                       chartModeInf === m
-                        ? "bg-[color:var(--color-blow-green-dark)] text-primary-foreground"
+                        ? "bg-[color:var(--color-blow-orange-dark)] text-primary-foreground"
                         : "text-muted-foreground hover:text-foreground",
                     )}
                   >
@@ -787,28 +936,29 @@ function PerformanceView() {
                   data={influencerTimeSeries}
                   margin={{ top: 10, right: 20, bottom: 20, left: 10 }}
                 >
-                  <CartesianGrid stroke={C.neutral} vertical={false} />
+                  <CartesianGrid stroke="var(--color-border)" vertical={false} />
                   <XAxis
                     dataKey="label"
-                    tick={{ fill: C.greenDark, fontSize: 11 }}
-                    stroke={C.neutralDark}
+                    tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
+                    stroke="var(--color-blow-neutral-dark)"
                     minTickGap={20}
                   />
                   <YAxis
-                    tick={{ fill: C.greenDark, fontSize: 11 }}
-                    stroke={C.neutralDark}
+                    tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
+                    stroke="var(--color-blow-neutral-dark)"
                     tickFormatter={(v) =>
                       v >= 1000 ? `R$ ${(v / 1000).toFixed(0)}k` : `R$ ${v}`
                     }
                   />
                   <Tooltip
                     contentStyle={{
-                      background: "#fff",
-                      border: `1px solid ${C.neutral}`,
+                      background: "var(--color-card)",
+                      border: "1px solid var(--color-border)",
                       borderRadius: 10,
                       fontSize: 12,
+                      color: "var(--color-foreground)",
                     }}
-                    labelStyle={{ color: C.greenDark, fontWeight: 600 }}
+                    labelStyle={{ color: "var(--color-foreground)", fontWeight: 600 }}
                     formatter={(v: number, name: string) => [
                       brl(v),
                       influencerLabels.get(name) || name,
@@ -850,29 +1000,30 @@ function PerformanceView() {
                     data={unidadesData}
                     margin={{ top: 10, right: 20, bottom: 60, left: 10 }}
                   >
-                    <CartesianGrid stroke={C.neutral} vertical={false} />
+                    <CartesianGrid stroke="var(--color-border)" vertical={false} />
                     <XAxis
                       dataKey="unidade"
-                      tick={{ fill: C.greenDark, fontSize: 11 }}
-                      stroke={C.neutralDark}
+                      tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
+                      stroke="var(--color-blow-neutral-dark)"
                       angle={-25}
                       textAnchor="end"
                       interval={0}
                       height={80}
                     />
                     <YAxis
-                      tick={{ fill: C.greenDark, fontSize: 11 }}
-                      stroke={C.neutralDark}
+                      tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
+                      stroke="var(--color-blow-neutral-dark)"
                       tickFormatter={(v) =>
                         v >= 1000 ? `R$ ${(v / 1000).toFixed(0)}k` : `R$ ${v}`
                       }
                     />
                     <Tooltip
                       contentStyle={{
-                        background: "#fff",
-                        border: `1px solid ${C.neutral}`,
+                        background: "var(--color-card)",
+                        border: "1px solid var(--color-border)",
                         borderRadius: 10,
                         fontSize: 12,
+                        color: "var(--color-foreground)",
                       }}
                       formatter={(v: number) => [brl(v), "Receita"]}
                     />
@@ -891,7 +1042,7 @@ function PerformanceView() {
             <div className="xl:col-span-2">
               <div className="overflow-x-auto rounded-xl border border-border">
                 <table className="w-full text-sm">
-                  <thead className="bg-[color:var(--color-blow-pink-light)]/60 text-[color:var(--color-blow-green-dark)]">
+                  <thead className="bg-[color:var(--color-blow-pink-light)]/60 text-[color:var(--color-blow-orange-dark)]">
                     <tr>
                       <Th>Unidade</Th>
                       <Th className="text-right">Receita</Th>
@@ -936,7 +1087,7 @@ function PerformanceView() {
                     variant="ghost"
                     size="sm"
                     onClick={() => setExpandUnidades((v) => !v)}
-                    className="text-[color:var(--color-blow-green-dark)] hover:bg-[color:var(--color-blow-green-light)]/20"
+                    className="text-[color:var(--color-blow-orange-dark)] hover:bg-[color:var(--color-blow-orange-light)]/20"
                   >
                     {expandUnidades ? "Ver menos" : "Ver mais"}
                   </Button>
@@ -957,195 +1108,6 @@ function PerformanceView() {
 }
 
 /* ---------- subcomponents ---------- */
-
-function KPI({
-  label,
-  value,
-  accent,
-}: {
-  label: string;
-  value: string;
-  accent?: "terracotta";
-}) {
-  return (
-    <div
-      className={cn(
-        "card-blow p-5 md:p-6 relative overflow-hidden",
-        accent === "terracotta" &&
-          "bg-[color:var(--color-blow-green-dark)] text-primary-foreground border-transparent",
-      )}
-    >
-      <div
-        className={cn(
-          "text-xs uppercase tracking-[0.18em]",
-          accent === "terracotta"
-            ? "text-[color:var(--color-blow-green-light)]"
-            : "text-muted-foreground",
-        )}
-      >
-        {label}
-      </div>
-      <div
-        className={cn(
-          "mt-3 text-3xl md:text-[2rem] font-semibold tabular-nums tracking-tight",
-          accent === "terracotta" && "text-[color:var(--color-blow-pink-light)]",
-        )}
-      >
-        {value}
-      </div>
-      {accent === "terracotta" && (
-        <div className="absolute right-0 bottom-0 h-1.5 w-24 bg-[color:var(--color-blow-terracotta)]" />
-      )}
-    </div>
-  );
-}
-
-function DateRange({
-  label,
-  start,
-  end,
-  onChange,
-}: {
-  label: string;
-  start?: Date;
-  end?: Date;
-  onChange: (s?: Date, e?: Date) => void;
-}) {
-  const text =
-    start && end
-      ? `${format(start, "dd/MM/yy", { locale: ptBR })} — ${format(end, "dd/MM/yy", { locale: ptBR })}`
-      : start
-        ? `A partir de ${format(start, "dd/MM/yy", { locale: ptBR })}`
-        : end
-          ? `Até ${format(end, "dd/MM/yy", { locale: ptBR })}`
-          : "Todos os períodos";
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="text-[11px] uppercase tracking-wider text-muted-foreground">
-        {label}
-      </label>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className="min-w-[240px] justify-start font-normal"
-          >
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            {text}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0 pointer-events-auto" align="start">
-          <Calendar
-            mode="range"
-            locale={ptBR}
-            selected={{ from: start, to: end }}
-            onSelect={(r) => onChange(r?.from, r?.to)}
-            numberOfMonths={2}
-            className="p-3 pointer-events-auto"
-          />
-        </PopoverContent>
-      </Popover>
-    </div>
-  );
-}
-
-function MultiFilter({
-  label,
-  options,
-  optionLabels,
-  selected,
-  onChange,
-}: {
-  label: string;
-  options: string[];
-  optionLabels?: Map<string, string>;
-  selected: string[];
-  onChange: (v: string[]) => void;
-}) {
-  const [query, setQuery] = useState("");
-  const labelFor = (o: string) => optionLabels?.get(o) ?? o;
-  const shown = query
-    ? options.filter((o) => labelFor(o).toLowerCase().includes(query.toLowerCase()))
-    : options;
-  const toggle = (v: string) => {
-    onChange(selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v]);
-  };
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="text-[11px] uppercase tracking-wider text-muted-foreground">
-        {label}
-      </label>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className="min-w-[200px] justify-start font-normal"
-          >
-            {selected.length === 0 ? (
-              <span className="text-muted-foreground">Todos</span>
-            ) : (
-              <span className="flex items-center gap-1">
-                <Badge
-                  variant="secondary"
-                  className="bg-[color:var(--color-blow-pink-light)] text-[color:var(--color-blow-green-dark)]"
-                >
-                  {selected.length}
-                </Badge>
-                selecionados
-              </span>
-            )}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-72 p-0" align="start">
-          <div className="p-2 border-b border-border">
-            <input
-              placeholder="Buscar…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="w-full px-3 py-2 text-sm rounded-md border border-input bg-background outline-none focus:ring-2 focus:ring-ring/40"
-            />
-          </div>
-          <ScrollArea className="h-64">
-            <div className="p-2 space-y-1">
-              {shown.length === 0 && (
-                <div className="p-3 text-xs text-muted-foreground">
-                  Nada encontrado.
-                </div>
-              )}
-              {shown.map((o) => (
-                <label
-                  key={o}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer text-sm"
-                >
-                  <Checkbox
-                    checked={selected.includes(o)}
-                    onCheckedChange={() => toggle(o)}
-                  />
-                  <span className="truncate">{labelFor(o)}</span>
-                </label>
-              ))}
-            </div>
-          </ScrollArea>
-          {selected.length > 0 && (
-            <div className="p-2 border-t border-border flex justify-between">
-              <button
-                onClick={() => onChange([])}
-                className="text-xs text-muted-foreground hover:text-foreground"
-              >
-                Limpar
-              </button>
-              <span className="text-xs text-muted-foreground">
-                {selected.length} de {options.length}
-              </span>
-            </div>
-          )}
-        </PopoverContent>
-      </Popover>
-    </div>
-  );
-}
 
 function Th({
   children,
@@ -1200,31 +1162,16 @@ const CLASS_META: Record<
   },
   ATENCAO: {
     label: "Ponto de atenção",
-    color: "#D9A400",
-    bg: "bg-amber-100",
-    text: "text-amber-800",
+    color: "var(--color-blow-coral)",
+    bg: "bg-[color:var(--color-blow-coral)]/15",
+    text: "text-[color:var(--color-blow-coral)]",
   },
   SAUDAVEL: {
     label: "Saudável",
-    color: C.green,
-    bg: "bg-[color:var(--color-blow-green-light)]/40",
+    color: STATUS_GREEN,
+    bg: "bg-[color:var(--color-blow-green)]/15",
     text: "text-[color:var(--color-blow-green-dark)]",
   },
-};
-
-const parseCodes = (raw: string | null): string[] => {
-  if (!raw) return [];
-  return raw
-    .split(",")
-    .map((s) => s.trim().toUpperCase())
-    .filter(
-      (s) => s && s !== "NÃO IDENTIFICADO" && s !== "NAO IDENTIFICADO",
-    );
-};
-
-const extractUF = (nome: string): string => {
-  const m = nome.match(/bLOw\s+([A-Za-z]{2})\s*\|/i);
-  return m ? m[1].toUpperCase() : "—";
 };
 
 function CuradoriaView() {
@@ -1406,7 +1353,7 @@ function CuradoriaView() {
             : "SAUDAVEL";
       return {
         nome,
-        uf: extractUF(nome),
+        uf: extractUF(nome) ?? "—",
         ativos,
         receita,
         atend,
@@ -1628,10 +1575,67 @@ function CuradoriaView() {
         {/* ============ PANORAMA DAS INFLUENCIADORAS (Clube) ============ */}
         <InfluenciadorasSection />
 
+        {/* Unidade x faturamento via influenciadora — logo após Faturamento por influenciadora */}
+        <section className="card-blow p-4 md:p-6">
+          <div className="mb-4">
+            <h3 className="text-xl md:text-2xl">
+              Unidade x faturamento via influenciadora
+            </h3>
+          </div>
+          <div className="h-[420px] w-full">
+            {unitBarData.length === 0 ? (
+              <EmptyState loading={loading} />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={unitBarData}
+                  layout="vertical"
+                  margin={{ top: 10, right: 30, bottom: 10, left: 10 }}
+                >
+                  <CartesianGrid stroke="var(--color-border)" horizontal={false} />
+                  <XAxis
+                    type="number"
+                    tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
+                    stroke="var(--color-blow-neutral-dark)"
+                    tickFormatter={(v) =>
+                      v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)
+                    }
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="nome"
+                    width={230}
+                    tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
+                    stroke="var(--color-blow-neutral-dark)"
+                  />
+                  <Tooltip
+                    formatter={(v: number) => brl(Number(v))}
+                    contentStyle={{
+                      background: "var(--color-card)",
+                      border: "1px solid var(--color-border)",
+                      borderRadius: 10,
+                      fontSize: 12,
+                      color: "var(--color-foreground)",
+                    }}
+                  />
+                  <Bar dataKey="receita" radius={[0, 6, 6, 0]}>
+                    {unitBarData.map((d, i) => (
+                      <Cell
+                        key={i}
+                        fill={CLASS_META[d.classificacao].color}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </section>
+
         {/* ============ VISÃO POR UNIDADE ============ */}
         <div className="space-y-8">
           <div>
-            <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-[color:var(--color-blow-green-dark)]">
+            <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-[color:var(--color-blow-orange-dark)]">
               Visão por unidade
             </h2>
             <p className="text-sm text-muted-foreground mt-1">
@@ -1669,7 +1673,7 @@ function CuradoriaView() {
                   size="sm"
                   onClick={exportUnitCSV}
                   disabled={unitSorted.length === 0}
-                  className="bg-[color:var(--color-blow-green-dark)] hover:bg-[color:var(--color-blow-green-dark)]/90"
+                  className="bg-[color:var(--color-blow-orange-dark)] hover:bg-[color:var(--color-blow-orange-dark)]/90"
                 >
                   <Download className="mr-1 h-4 w-4" /> Exportar visão
                 </Button>
@@ -1679,96 +1683,33 @@ function CuradoriaView() {
 
           {/* Summary cards */}
           <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <KPI label="Total de unidades" value={num(unitSummary.total)} />
-            <KPI
+            <KpiCard
+              icon={Building2}
+              label="Total de unidades"
+              value={num(unitSummary.total)}
+              description="Com inauguração acompanhada"
+            />
+            <KpiCard
+              icon={AlertTriangle}
               label="Prioritário"
               value={num(unitSummary.prio)}
-              accent="terracotta"
+              description="Sem influenciadora ativa"
+              tone="terracotta"
             />
-            <div className="card-blow p-5 md:p-6 relative overflow-hidden">
-              <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                Ponto de atenção
-              </div>
-              <div className="mt-3 text-3xl md:text-[2rem] font-semibold tabular-nums tracking-tight">
-                {num(unitSummary.atn)}
-              </div>
-              <div className="absolute right-0 bottom-0 h-1.5 w-24 bg-amber-500" />
-            </div>
-            <div className="card-blow p-5 md:p-6 relative overflow-hidden">
-              <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                Saudável
-              </div>
-              <div className="mt-3 text-3xl md:text-[2rem] font-semibold tabular-nums tracking-tight">
-                {num(unitSummary.ok)}
-              </div>
-              <div className="absolute right-0 bottom-0 h-1.5 w-24 bg-[color:var(--color-blow-green)]" />
-            </div>
-          </section>
-
-          {/* Bar chart */}
-          <section className="card-blow p-4 md:p-6">
-            <div className="mb-4 flex items-start justify-between gap-4 flex-wrap">
-              <div>
-                <h3 className="text-xl md:text-2xl">
-                  Retorno por unidade (top 20 com influência)
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Cores refletem a classificação da unidade.
-                </p>
-              </div>
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                <LegendDot color={CLASS_META.PRIORITARIO.color} label="Prioritário" />
-                <LegendDot color={CLASS_META.ATENCAO.color} label="Ponto de atenção" />
-                <LegendDot color={CLASS_META.SAUDAVEL.color} label="Saudável" />
-              </div>
-            </div>
-            <div className="h-[420px] w-full">
-              {unitBarData.length === 0 ? (
-                <EmptyState loading={loading} />
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={unitBarData}
-                    layout="vertical"
-                    margin={{ top: 10, right: 30, bottom: 10, left: 10 }}
-                  >
-                    <CartesianGrid stroke={C.neutral} horizontal={false} />
-                    <XAxis
-                      type="number"
-                      tick={{ fill: C.greenDark, fontSize: 11 }}
-                      stroke={C.neutralDark}
-                      tickFormatter={(v) =>
-                        v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)
-                      }
-                    />
-                    <YAxis
-                      type="category"
-                      dataKey="nome"
-                      width={230}
-                      tick={{ fill: C.greenDark, fontSize: 11 }}
-                      stroke={C.neutralDark}
-                    />
-                    <Tooltip
-                      formatter={(v: number) => brl(Number(v))}
-                      contentStyle={{
-                        background: "#fff",
-                        border: `1px solid ${C.neutral}`,
-                        borderRadius: 10,
-                        fontSize: 12,
-                      }}
-                    />
-                    <Bar dataKey="receita" radius={[0, 6, 6, 0]}>
-                      {unitBarData.map((d, i) => (
-                        <Cell
-                          key={i}
-                          fill={CLASS_META[d.classificacao].color}
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
+            <KpiCard
+              icon={AlertCircle}
+              label="Ponto de atenção"
+              value={num(unitSummary.atn)}
+              description="Influenciadora ativa, sem receita"
+              tone="coral"
+            />
+            <KpiCard
+              icon={ShieldCheck}
+              label="Saudável"
+              value={num(unitSummary.ok)}
+              description="Com receita registrada"
+              tone="green"
+            />
           </section>
 
           {/* Table */}
@@ -1781,7 +1722,7 @@ function CuradoriaView() {
             </div>
             <div className="overflow-x-auto rounded-xl border border-border">
               <table className="w-full text-sm">
-                <thead className="bg-[color:var(--color-blow-pink-light)]/60 text-[color:var(--color-blow-green-dark)]">
+                <thead className="bg-[color:var(--color-blow-pink-light)]/60 text-[color:var(--color-blow-orange-dark)]">
                   <tr>
                     <Th>Unidade</Th>
                     <Th>UF</Th>
@@ -1847,7 +1788,7 @@ function CuradoriaView() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setExpandUnit((v) => !v)}
-                  className="text-[color:var(--color-blow-green-dark)] hover:bg-[color:var(--color-blow-green-light)]/20"
+                  className="text-[color:var(--color-blow-orange-dark)] hover:bg-[color:var(--color-blow-orange-light)]/20"
                 >
                   {expandUnit ? "Ver menos" : "Ver mais"}
                 </Button>
@@ -1864,18 +1805,6 @@ function CuradoriaView() {
         </footer>
       </main>
     </>
-  );
-}
-
-function LegendDot({ color, label }: { color: string; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <span
-        className="inline-block h-2.5 w-2.5 rounded-full"
-        style={{ backgroundColor: color }}
-      />
-      {label}
-    </span>
   );
 }
 

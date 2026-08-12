@@ -19,6 +19,14 @@ export const dateBR = (iso: string | Date) => {
   }).format(d);
 };
 
+// Parseia uma string "YYYY-MM-DD" (ou com sufixo de hora) como data local,
+// em vez do parsing UTC que `new Date(str)` faz para strings date-only —
+// evita que a data vire "um dia antes" em fusos com offset negativo.
+export const parseLocalDate = (iso: string) => {
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+};
+
 export const isoDay = (iso: string) => {
   // returns YYYY-MM-DD in local time
   const d = new Date(iso);
