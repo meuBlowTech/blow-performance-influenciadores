@@ -55,6 +55,7 @@ import { supabase, type ConsumoCupom, type CupomEmitido, type Unidade } from "@/
 import {
   brl,
   dateBR,
+  defaultPeriodRange,
   downloadCSV,
   isoDay,
   isoWeek,
@@ -262,18 +263,12 @@ function PerformanceView() {
 
 
   // filters — abre sempre com o compilado do mês atual até ontem
-  const [dateStart, setDateStart] = useState<Date | undefined>(() => {
-    const d = new Date();
-    d.setDate(1);
-    d.setHours(0, 0, 0, 0);
-    return d;
-  });
-  const [dateEnd, setDateEnd] = useState<Date | undefined>(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    d.setHours(0, 0, 0, 0);
-    return d;
-  });
+  const [dateStart, setDateStart] = useState<Date | undefined>(
+    () => defaultPeriodRange().start,
+  );
+  const [dateEnd, setDateEnd] = useState<Date | undefined>(
+    () => defaultPeriodRange().end,
+  );
   const [unidades, setUnidades] = useState<string[]>([]);
   const [cupons, setCupons] = useState<string[]>([]);
   const [chartMode, setChartMode] = useState<"dia" | "semana">("dia");

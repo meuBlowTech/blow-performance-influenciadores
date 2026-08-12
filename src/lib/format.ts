@@ -1,3 +1,16 @@
+// Janela padrão usada em todo campo de período do app: do dia 1 do mês
+// atual até ontem. Centralizada aqui pra todo campo de período (Geral,
+// Performance etc.) abrir sempre com a mesma janela.
+export const defaultPeriodRange = (): { start: Date; end: Date } => {
+  const start = new Date();
+  start.setDate(1);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date();
+  end.setDate(end.getDate() - 1);
+  end.setHours(0, 0, 0, 0);
+  return { start, end };
+};
+
 export const brl = (n: number) =>
   new Intl.NumberFormat("pt-BR", {
     style: "currency",

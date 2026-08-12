@@ -13,12 +13,14 @@ import {
 } from "recharts";
 import { CheckCircle2, DollarSign, Percent, Ticket, XCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { brl, dateBR, num, parseLocalDate } from "@/lib/format";
+import { brl, dateBR, defaultPeriodRange, num, parseLocalDate } from "@/lib/format";
+import { parseCodes } from "@/lib/coupons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useUnidadesUnificadas } from "@/hooks/useUnidadesUnificadas";
+import { useConsumoCupons } from "@/hooks/useConsumoCupons";
 import { DateRangePicker } from "@/components/DateRangePicker";
 import { KpiCard } from "@/components/KpiCard";
 
@@ -37,6 +39,7 @@ type ClubeInflu = {
   nome: string | null;
   unidade: string | null;
   unidades_inclusas: string[] | null;
+  codigo_cupom: string | null;
   status_parceria: string | null;
   status_cupom: string | null;
   data_validade: string | null;
@@ -66,14 +69,6 @@ type Faturamento = {
   ultima_utilizacao: string | null;
 };
 
-type StatusCupons = {
-  cupons_cadastrados: number | null;
-  cupons_convertidos: number | null;
-  cupons_nao_convertidos: number | null;
-  taxa_conversao_pct: number | null;
-  receita_total: number | null;
-};
-
 function monthLabel(iso: string) {
   const d = parseLocalDate(iso);
   if (Number.isNaN(d.getTime())) return iso;
@@ -85,9 +80,9 @@ export default function InfluenciadorasSection() {
   const [influs, setInflus] = useState<ClubeInflu[]>([]);
   const [mensal, setMensal] = useState<Mensal[]>([]);
   const [fatur, setFatur] = useState<Faturamento[]>([]);
-  const [statusCupons, setStatusCupons] = useState<StatusCupons | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { rows: consumoRows } = useConsumoCupons();
 
   // filters
   const [activeCard, setActiveCard] = useState<
@@ -96,8 +91,14 @@ export default function InfluenciadorasSection() {
   const [busca, setBusca] = useState("");
   const [unidadeFilter, setUnidadeFilter] = useState<string>("");
   const [expand, setExpand] = useState(false);
-  const [periodStart, setPeriodStart] = useState<Date | undefined>();
-  const [periodEnd, setPeriodEnd] = useState<Date | undefined>();
+  // Mesma janela padrão do campo de período da aba Geral — todo campo de
+  // período do app precisa abrir sincronizado com ela.
+  const [periodStart, setPeriodStart] = useState<Date | undefined>(
+    () => defaultPeriodRange().start,
+  );
+  const [periodEnd, setPeriodEnd] = useState<Date | undefined>(
+    () => defaultPeriodRange().end,
+  );
 
   useEffect(() => {
     let alive = true;
@@ -108,29 +109,25 @@ export default function InfluenciadorasSection() {
           { data: iData, error: iErr },
           { data: mData, error: mErr },
           { data: fData, error: fErr },
-          { data: sData, error: sErr },
         ] = await Promise.all([
           supabase
             .from("clube_influenciadoras")
             .select(
-              "id, nome, unidade, unidades_inclusas, status_parceria, status_cupom, data_validade",
+              "id, nome, unidade, unidades_inclusas, codigo_cupom, status_parceria, status_cupom, data_validade",
             ),
           supabase.from("clube_cupons_mensal").select("*").order("mes"),
           supabase
             .from("clube_faturamento_por_influenciadora")
             .select("*")
             .order("receita_total", { ascending: false }),
-          supabase.from("clube_status_cupons").select("*").maybeSingle(),
         ]);
         if (iErr) throw iErr;
         if (mErr) throw mErr;
         if (fErr) throw fErr;
-        if (sErr) throw sErr;
         if (alive) {
           setInflus((iData as ClubeInflu[]) || []);
           setMensal((mData as Mensal[]) || []);
           setFatur((fData as Faturamento[]) || []);
-          setStatusCupons((sData as StatusCupons) || null);
         }
       } catch (e: unknown) {
         if (alive) setError(e instanceof Error ? e.message : String(e));
@@ -142,6 +139,41 @@ export default function InfluenciadorasSection() {
       alive = false;
     };
   }, []);
+
+  // Status de cupons no período selecionado — calculado direto de
+  // consumo_cupons (em vez da view clube_status_cupons, que é lifetime e
+  // não respeita o filtro de período), pra ficar consistente com o resto
+  // da página. "Cadastrados" é o total do clube (não é um recorte de
+  // tempo); os demais refletem só o período selecionado.
+  const statusCupons = useMemo(() => {
+    const codigos = new Set<string>();
+    for (const i of influs) for (const c of parseCodes(i.codigo_cupom)) codigos.add(c);
+
+    const startTs = periodStart ? new Date(periodStart).setHours(0, 0, 0, 0) : null;
+    const endTs = periodEnd ? new Date(periodEnd).setHours(23, 59, 59, 999) : null;
+
+    const convertidos = new Set<string>();
+    let receita = 0;
+    for (const r of consumoRows) {
+      if (!r.data_hora_atendimento) continue;
+      const t = new Date(r.data_hora_atendimento).getTime();
+      if (startTs !== null && t < startTs) continue;
+      if (endTs !== null && t > endTs) continue;
+      const code = (r.codigo_cupom || "").trim().toUpperCase();
+      if (!code || !codigos.has(code)) continue;
+      convertidos.add(code);
+      receita += Number(r.valor_liquido) || 0;
+    }
+
+    const cadastrados = codigos.size;
+    return {
+      cupons_cadastrados: cadastrados,
+      cupons_convertidos: convertidos.size,
+      cupons_nao_convertidos: cadastrados - convertidos.size,
+      taxa_conversao_pct: cadastrados ? (convertidos.size / cadastrados) * 100 : 0,
+      receita_total: receita,
+    };
+  }, [influs, consumoRows, periodStart, periodEnd]);
 
 
 
@@ -236,41 +268,42 @@ export default function InfluenciadorasSection() {
         }}
       />
 
-      {/* Conversion cards (clube_status_cupons) */}
+      {/* Conversion cards — calculadas no período selecionado acima
+          (exceto "Cupons cadastrados", que é o total do clube) */}
       <section className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <KpiCard
           icon={Ticket}
           label="Cupons cadastrados"
-          value={num(Number(statusCupons?.cupons_cadastrados || 0))}
+          value={num(Number(statusCupons.cupons_cadastrados))}
           description="Total no clube"
         />
         <KpiCard
           icon={CheckCircle2}
           label="Convertidos"
-          value={num(Number(statusCupons?.cupons_convertidos || 0))}
-          description="Com uso registrado"
+          value={num(Number(statusCupons.cupons_convertidos))}
+          description="No período selecionado"
           tone="green"
         />
         <KpiCard
           icon={XCircle}
           label="Não convertidos"
-          value={num(Number(statusCupons?.cupons_nao_convertidos || 0))}
-          description="Sem uso até agora"
+          value={num(Number(statusCupons.cupons_nao_convertidos))}
+          description="Sem uso no período"
           tone="terracotta"
         />
         <KpiCard
           icon={Percent}
           label="Taxa de conversão"
-          value={`${Number(statusCupons?.taxa_conversao_pct || 0)
+          value={`${Number(statusCupons.taxa_conversao_pct)
             .toFixed(1)
             .replace(".", ",")}%`}
           description="Convertidos ÷ cadastrados"
         />
         <KpiCard
           icon={DollarSign}
-          label="Faturamento total"
-          value={brl(Number(statusCupons?.receita_total || 0))}
-          description="Gerado pelo clube"
+          label="Faturamento no período"
+          value={brl(Number(statusCupons.receita_total))}
+          description="Cupons convertidos no período"
           tone="green"
         />
       </section>

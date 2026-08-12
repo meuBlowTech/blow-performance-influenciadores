@@ -190,15 +190,7 @@ function ComparativoSection({
 
   return (
     <section className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">
-            Performance de inaugurações
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Performance dos primeiros {windowDays} dias de cada unidade.
-          </p>
-        </div>
+      <div className="flex justify-end">
         <WindowToggle value={windowDays} onChange={onWindowDaysChange} options={WINDOW_OPTIONS} />
       </div>
 
@@ -264,6 +256,17 @@ function ComparativoSection({
               {rows.map((r) => {
                 const m = windowedByUnit.get(r.estabelecimento);
                 const selected = expandedUnit === r.estabelecimento;
+                // Vermelho: sem nenhum atendimento na janela (sem histórico de
+                // performance). Verde: teve faturamento vindo de cupom de
+                // influenciadora cadastrada. Neutro: teve movimento, mas sem
+                // cupom de influenciadora atribuído.
+                const semHistorico = !m || m.atendimentos === 0;
+                const comInfluenciadora = !!m && m.cuponsUtilizados > 0;
+                const statusColor = semHistorico
+                  ? "var(--color-blow-terracotta)"
+                  : comInfluenciadora
+                    ? "var(--color-blow-green)"
+                    : "var(--color-blow-neutral-dark)";
                 return (
                   <button
                     key={r.id}
@@ -273,16 +276,13 @@ function ComparativoSection({
                       "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors",
                       selected
                         ? "border-[color:var(--color-blow-orange)] bg-[color:var(--color-blow-orange-light)]/30 text-[color:var(--color-blow-orange-dark)] font-medium"
-                        : "border-border bg-card hover:border-[color:var(--color-blow-orange-light)] text-foreground",
+                        : "bg-card hover:border-[color:var(--color-blow-orange-light)] text-foreground",
                     )}
+                    style={selected ? undefined : { borderColor: `color-mix(in oklch, ${statusColor} 55%, var(--color-border))` }}
                   >
                     <span
-                      className={cn(
-                        "h-1.5 w-1.5 rounded-full shrink-0",
-                        m?.janelaCompleta
-                          ? "bg-[color:var(--color-blow-orange)]"
-                          : "bg-[color:var(--color-blow-terracotta)]",
-                      )}
+                      className="h-1.5 w-1.5 rounded-full shrink-0"
+                      style={{ backgroundColor: statusColor }}
                     />
                     {r.estabelecimento}
                     {selected ? (
