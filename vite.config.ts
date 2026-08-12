@@ -6,10 +6,22 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
+// Opt-in static build for GitHub Pages (`DEPLOY_TARGET=github-pages npm run build`).
+// Only applies outside the Lovable sandbox — inside it, preset/base overrides are
+// force-reset to the Cloudflare target regardless of what's set here, so this can't
+// affect the normal Lovable publish flow.
+const isGithubPagesBuild = process.env.DEPLOY_TARGET === "github-pages";
+
 export default defineConfig({
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  ...(isGithubPagesBuild
+    ? {
+        vite: { base: "/blow-performance-influenciadores/" },
+        nitro: { preset: "node-server" },
+      }
+    : {}),
 });
