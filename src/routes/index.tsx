@@ -17,7 +17,6 @@ import {
 import {
   AlertCircle,
   AlertTriangle,
-  Bell,
   Building2,
   DollarSign,
   Download,
@@ -25,7 +24,6 @@ import {
   Lock,
   PartyPopper,
   Receipt,
-  Search,
   ShieldCheck,
   Ticket,
   TrendingUp,
@@ -214,24 +212,6 @@ function Dashboard() {
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-3 border-b border-border px-4 md:px-6">
           <SidebarTrigger />
-          <div className="relative max-w-md flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Buscar unidades, cupons, influenciadoras…"
-              className="h-9 w-full rounded-md border border-input bg-muted pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-          </div>
-          <button
-            type="button"
-            aria-label="Notificações"
-            className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          >
-            <Bell className="h-4.5 w-4.5" />
-          </button>
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[color:var(--color-blow-orange)]/20 text-sm font-semibold text-[color:var(--color-blow-orange)]">
-            BL
-          </div>
         </header>
         <div className="px-4 pt-6 md:px-6">
           <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
