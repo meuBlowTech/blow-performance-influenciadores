@@ -22,7 +22,7 @@ import { useInfluenciadoras, type ClubeInfluenciadora } from "@/hooks/useInfluen
 import { MultiFilter } from "@/components/MultiFilter";
 import { comandaKey } from "@/lib/inauguracoes";
 import { KpiCard } from "@/components/KpiCard";
-import { FORMATO_PARCERIA_OPTIONS, unidadesDe, computeAllUnidades } from "@/lib/influenciadoras";
+import { FORMATO_PARCERIA_OPTIONS, formatoLabel, unidadesDe, computeAllUnidades } from "@/lib/influenciadoras";
 
 type SubTab = "status" | "solicitar" | "sem_dono";
 
@@ -49,7 +49,7 @@ export default function ClubeView() {
   const { influenciadoras, loading } = useInfluenciadoras();
 
   const tabs: { id: SubTab; label: string }[] = [
-    { id: "status", label: "Influenciadores ativos" },
+    { id: "status", label: "Influenciadores cadastrados" },
     { id: "sem_dono", label: "Cupons sem dono" },
     { id: "solicitar", label: "Cadastro de Influenciador" },
   ];
@@ -314,7 +314,14 @@ function InfluenciadoraCard({ i }: { i: ClubeInfluenciadora }) {
       <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
         <div>
           <dt className="text-muted-foreground">Formato</dt>
-          <dd className="font-medium">{i.formato_parceria ?? "—"}</dd>
+          <dd className="mt-0.5">
+            <Badge
+              variant="outline"
+              className="text-[10px] border-[color:var(--color-blow-orange)]/50 text-[color:var(--color-blow-orange-dark)]"
+            >
+              {formatoLabel(i.formato_parceria)}
+            </Badge>
+          </dd>
         </div>
         <div>
           <dt className="text-muted-foreground">Cupom</dt>

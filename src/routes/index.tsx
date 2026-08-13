@@ -791,6 +791,7 @@ function PerformanceView() {
                     stroke="var(--color-blow-neutral-dark)"
                   />
                   <Tooltip
+                    cursor={{ fill: "var(--color-accent)", fillOpacity: 0.4 }}
                     contentStyle={{
                       background: "var(--color-card)",
                       border: "1px solid var(--color-border)",
@@ -993,6 +994,7 @@ function PerformanceView() {
                       }
                     />
                     <Tooltip
+                      cursor={{ fill: "var(--color-accent)", fillOpacity: 0.4 }}
                       contentStyle={{
                         background: "var(--color-card)",
                         border: "1px solid var(--color-border)",
@@ -1584,6 +1586,7 @@ function CuradoriaView() {
                     stroke="var(--color-blow-neutral-dark)"
                   />
                   <Tooltip
+                    cursor={{ fill: "var(--color-accent)", fillOpacity: 0.4 }}
                     formatter={(v: number) => brl(Number(v))}
                     contentStyle={{
                       background: "var(--color-card)",
