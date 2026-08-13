@@ -359,6 +359,7 @@ export default function InfluenciadorasSection() {
                 />
                 <Tooltip
                   cursor={{ fill: "var(--color-accent)", fillOpacity: 0.4 }}
+                  itemStyle={{ color: "var(--color-foreground)" }}
                   contentStyle={{
                     background: "var(--color-card)",
                     border: "1px solid var(--color-border)",
