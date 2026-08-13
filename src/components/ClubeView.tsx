@@ -374,10 +374,6 @@ function SolicitarTab({ influenciadoras }: { influenciadoras: ClubeInfluenciador
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.solicitante_nome || !form.solicitante_email || !form.nome_influenciador || !form.unidade) {
-      toast.error("Preencha os campos obrigatórios (*)");
-      return;
-    }
     setSubmitting(true);
     const { error } = await supabase.from("clube_solicitacoes").insert({
       ...form,
@@ -426,16 +422,16 @@ function SolicitarTab({ influenciadoras }: { influenciadoras: ClubeInfluenciador
       </p>
 
       <div className="grid md:grid-cols-2 gap-4">
-        <Field label="Seu nome *">
+        <Field label="Seu nome">
           <Input value={form.solicitante_nome} onChange={(e) => upd("solicitante_nome")(e.target.value)} />
         </Field>
-        <Field label="Seu e-mail *">
+        <Field label="Seu e-mail">
           <Input type="email" value={form.solicitante_email} onChange={(e) => upd("solicitante_email")(e.target.value)} />
         </Field>
-        <Field label="Nome da influenciadora *">
+        <Field label="Nome da influenciadora">
           <Input value={form.nome_influenciador} onChange={(e) => upd("nome_influenciador")(e.target.value)} />
         </Field>
-        <Field label="Unidade *">
+        <Field label="Unidade">
           <Input
             list="unidades-sugestoes"
             value={form.unidade}
