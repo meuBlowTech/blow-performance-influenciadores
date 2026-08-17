@@ -31,6 +31,7 @@ type ClubeSolicitacao = {
   codigo_cupom_sugerido: string | null;
   status_parceria_sugerido: string | null;
   data_validade_sugerida: string | null;
+  data_encerramento_parceria_sugerida: string | null;
   instagram: string | null;
   contato: string | null;
   observacao: string | null;
@@ -273,6 +274,12 @@ function AprovacoesTab({
                 <dd className="font-medium">{dateBR(s.data_validade_sugerida)}</dd>
               </div>
             )}
+            {s.data_encerramento_parceria_sugerida && (
+              <div>
+                <dt className="text-muted-foreground">Encerramento da parceria</dt>
+                <dd className="font-medium">{dateBR(s.data_encerramento_parceria_sugerida)}</dd>
+              </div>
+            )}
           </dl>
           {s.observacao && (
             <p className="mt-3 text-xs text-muted-foreground italic">"{s.observacao}"</p>
@@ -409,6 +416,7 @@ function EditRow({
   onSaved: () => void;
 }) {
   const initial = {
+    nome: i.nome ?? "",
     unidade: i.unidade ?? "",
     unidades_extras: (i.unidades_inclusas ?? []).filter((u) => u && u !== i.unidade).join(", "),
     formato_parceria: i.formato_parceria ?? "",
@@ -417,6 +425,7 @@ function EditRow({
     status_cupom: (i.status_cupom as string) ?? "ativa",
     data_inicio: i.data_inicio ?? "",
     data_validade: i.data_validade ?? "",
+    data_encerramento_parceria: i.data_encerramento_parceria ?? "",
     instagram: i.instagram ?? "",
     contato: i.contato ?? "",
   };
@@ -444,6 +453,7 @@ function EditRow({
     const payload = {
       p_id: i.id,
       p_password: password,
+      p_nome: diff(form.nome.trim(), initial.nome),
       p_unidade: diff(form.unidade, initial.unidade),
       p_unidades_inclusas: unidadesChanged ? unidadesArr : null,
       p_formato_parceria: diff(form.formato_parceria, initial.formato_parceria),
@@ -452,6 +462,10 @@ function EditRow({
       p_status_cupom: diff(form.status_cupom, initial.status_cupom),
       p_data_inicio: diff(form.data_inicio, initial.data_inicio),
       p_data_validade: diff(form.data_validade, initial.data_validade),
+      p_data_encerramento_parceria: diff(
+        form.data_encerramento_parceria,
+        initial.data_encerramento_parceria,
+      ),
       p_instagram: diff(form.instagram, initial.instagram),
       p_contato: diff(form.contato, initial.contato),
     };
@@ -472,6 +486,11 @@ function EditRow({
     <div className="card-blow p-5 space-y-3">
       <h4 className="font-semibold text-[color:var(--color-blow-orange-dark)]">{i.nome}</h4>
       <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-2">
+          <Field label="Nome do influenciador">
+            <Input value={form.nome} onChange={(e) => upd("nome")(e.target.value)} />
+          </Field>
+        </div>
         <Field label="Unidade">
           <Input value={form.unidade} onChange={(e) => upd("unidade")(e.target.value)} />
         </Field>
@@ -512,6 +531,13 @@ function EditRow({
         </Field>
         <Field label="Data de validade">
           <Input type="date" value={form.data_validade ?? ""} onChange={(e) => upd("data_validade")(e.target.value)} />
+        </Field>
+        <Field label="Encerramento da parceria">
+          <Input
+            type="date"
+            value={form.data_encerramento_parceria ?? ""}
+            onChange={(e) => upd("data_encerramento_parceria")(e.target.value)}
+          />
         </Field>
         <div className="col-span-2">
           <Field label="Contato">

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Building2, Clock, TicketX, UserCheck, UserX } from "lucide-react";
+import { Building2, ChevronDown, Clock, TicketX, UserCheck, UserX } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -95,7 +95,7 @@ function StatusTab({
   loading: boolean;
 }) {
   const [cardFilter, setCardFilter] = useState<FilterCard>(null);
-  const [unidadeFilter, setUnidadeFilter] = useState<string>("todas");
+  const [unidadeFilter, setUnidadeFilter] = useState<string[]>([]);
   const [statusParceria, setStatusParceria] = useState<string>("todos");
   const [statusCupom, setStatusCupom] = useState<string>("todos");
   const [search, setSearch] = useState("");
@@ -124,7 +124,8 @@ function StatusTab({
       if (cardFilter === "expirados" && i.status_cupom !== "encerrada") return false;
       if (cardFilter === "expirando" && !isExpiringSoon(i)) return false;
 
-      if (unidadeFilter !== "todas" && !unidadesDe(i).includes(unidadeFilter)) return false;
+      if (unidadeFilter.length > 0 && !unidadesDe(i).some((u) => unidadeFilter.includes(u)))
+        return false;
       if (statusParceria !== "todos" && i.status_parceria !== statusParceria) return false;
       if (statusCupom === "ativa" && i.status_cupom !== "ativa") return false;
       if (statusCupom === "encerrada" && i.status_cupom !== "encerrada") return false;
@@ -196,18 +197,12 @@ function StatusTab({
             placeholder="Nome, cupom ou unidade…"
           />
         </div>
-        <div className="min-w-[220px]">
-          <Label className="text-xs text-muted-foreground">Unidade</Label>
-          <Select value={unidadeFilter} onValueChange={setUnidadeFilter}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todas">Todas</SelectItem>
-              {allUnidades.map((u) => (
-                <SelectItem key={u} value={u}>{u}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <MultiFilter
+          label="Unidade"
+          options={allUnidades}
+          selected={unidadeFilter}
+          onChange={setUnidadeFilter}
+        />
         <div className="min-w-[180px]">
           <Label className="text-xs text-muted-foreground">Status da parceria</Label>
           <Select value={statusParceria} onValueChange={setStatusParceria}>
@@ -261,79 +256,115 @@ function StatusTab({
 }
 
 function InfluenciadoraCard({ i }: { i: ClubeInfluenciadora }) {
+  const [open, setOpen] = useState(false);
   const extras = (i.unidades_inclusas ?? []).filter((u) => u && u !== i.unidade);
   const parceriaAtiva = i.status_parceria === "ativa";
   const cupomAtivo = i.status_cupom === "ativa";
   const expSoon = isExpiringSoon(i);
   return (
     <div className="card-blow p-5">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <h4 className="font-semibold text-[color:var(--color-blow-orange-dark)]">{i.nome}</h4>
-          {i.unidade && <p className="text-xs text-muted-foreground mt-0.5">{i.unidade}</p>}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="w-full text-left"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h4 className="font-semibold text-[color:var(--color-blow-orange-dark)]">{i.nome}</h4>
+            {i.unidade && <p className="text-xs text-muted-foreground mt-0.5">{i.unidade}</p>}
+          </div>
+          <div className="flex items-start gap-2 shrink-0">
+            <div className="flex flex-col gap-1 items-end">
+              <Badge
+                className={cn(
+                  "text-[10px]",
+                  parceriaAtiva
+                    ? "bg-[color:var(--color-blow-green)] text-white hover:bg-[color:var(--color-blow-green)]"
+                    : "bg-[color:var(--color-blow-terracotta)] text-white hover:bg-[color:var(--color-blow-terracotta)]",
+                )}
+              >
+                {parceriaAtiva ? "Parceria ativa" : "Parceria encerrada"}
+              </Badge>
+              <Badge
+                variant="outline"
+                className={cn(
+                  "text-[10px]",
+                  cupomAtivo && !expSoon && "border-[color:var(--color-blow-green)] text-[color:var(--color-blow-green-dark)]",
+                  expSoon && "border-[color:var(--color-blow-coral)] text-[color:var(--color-blow-terracotta)]",
+                  !cupomAtivo && "border-[color:var(--color-blow-terracotta)] text-[color:var(--color-blow-terracotta)]",
+                )}
+              >
+                {cupomAtivo ? (expSoon ? "Cupom expirando" : "Cupom ativo") : "Cupom expirado"}
+              </Badge>
+            </div>
+            <ChevronDown
+              className={cn(
+                "size-4 text-muted-foreground shrink-0 transition-transform mt-0.5",
+                open && "rotate-180",
+              )}
+            />
+          </div>
         </div>
-        <div className="flex flex-col gap-1 items-end shrink-0">
-          <Badge
-            className={cn(
-              "text-[10px]",
-              parceriaAtiva
-                ? "bg-[color:var(--color-blow-green)] text-white hover:bg-[color:var(--color-blow-green)]"
-                : "bg-[color:var(--color-blow-terracotta)] text-white hover:bg-[color:var(--color-blow-terracotta)]",
-            )}
-          >
-            {parceriaAtiva ? "Parceria ativa" : "Parceria encerrada"}
-          </Badge>
+        {extras.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-1 items-center">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+              + também em:
+            </span>
+            {extras.map((u) => (
+              <span
+                key={u}
+                className="text-[11px] rounded-full bg-[color:var(--color-blow-pink-light)] text-[color:var(--color-blow-orange-dark)] px-2 py-0.5"
+              >
+                {u}
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="mt-4">
           <Badge
             variant="outline"
-            className={cn(
-              "text-[10px]",
-              cupomAtivo && !expSoon && "border-[color:var(--color-blow-green)] text-[color:var(--color-blow-green-dark)]",
-              expSoon && "border-[color:var(--color-blow-coral)] text-[color:var(--color-blow-terracotta)]",
-              !cupomAtivo && "border-[color:var(--color-blow-terracotta)] text-[color:var(--color-blow-terracotta)]",
-            )}
+            className="text-[10px] border-[color:var(--color-blow-orange)]/50 text-[color:var(--color-blow-orange-dark)]"
           >
-            {cupomAtivo ? (expSoon ? "Cupom expirando" : "Cupom ativo") : "Cupom expirado"}
+            {formatoLabel(i.formato_parceria)}
           </Badge>
         </div>
-      </div>
-      {extras.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1 items-center">
-          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
-            + também em:
-          </span>
-          {extras.map((u) => (
-            <span
-              key={u}
-              className="text-[11px] rounded-full bg-[color:var(--color-blow-pink-light)] text-[color:var(--color-blow-orange-dark)] px-2 py-0.5"
-            >
-              {u}
-            </span>
-          ))}
-        </div>
+      </button>
+
+      {open && (
+        <dl className="mt-4 pt-4 border-t border-border grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+          <div>
+            <dt className="text-muted-foreground">Cupom</dt>
+            <dd className="font-medium font-mono">{i.codigo_cupom ?? "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Válido até</dt>
+            <dd className="font-medium">
+              {i.data_validade ? dateBR(i.data_validade) : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Início da parceria</dt>
+            <dd className="font-medium">
+              {i.data_inicio ? dateBR(i.data_inicio) : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Encerramento da parceria</dt>
+            <dd className="font-medium">
+              {i.data_encerramento_parceria ? dateBR(i.data_encerramento_parceria) : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Instagram</dt>
+            <dd className="font-medium truncate">{i.instagram || "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Contato</dt>
+            <dd className="font-medium truncate">{i.contato || "—"}</dd>
+          </div>
+        </dl>
       )}
-      <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
-        <div>
-          <dt className="text-muted-foreground">Formato</dt>
-          <dd className="mt-0.5">
-            <Badge
-              variant="outline"
-              className="text-[10px] border-[color:var(--color-blow-orange)]/50 text-[color:var(--color-blow-orange-dark)]"
-            >
-              {formatoLabel(i.formato_parceria)}
-            </Badge>
-          </dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">Cupom</dt>
-          <dd className="font-medium font-mono">{i.codigo_cupom ?? "—"}</dd>
-        </div>
-        <div className="col-span-2">
-          <dt className="text-muted-foreground">Válido até</dt>
-          <dd className="font-medium">
-            {i.data_validade ? dateBR(i.data_validade) : "—"}
-          </dd>
-        </div>
-      </dl>
     </div>
   );
 }
@@ -349,6 +380,7 @@ function SolicitarTab({ influenciadoras }: { influenciadoras: ClubeInfluenciador
     formato_parceria_sugerido: "clube_franqueadora",
     status_parceria_sugerido: "ativa",
     data_validade_sugerida: "",
+    data_encerramento_parceria_sugerida: "",
     instagram: "",
     contato: "",
     observacao: "",
@@ -486,6 +518,15 @@ function SolicitarTab({ influenciadoras }: { influenciadoras: ClubeInfluenciador
             type="date"
             value={form.data_validade_sugerida}
             onChange={(e) => upd("data_validade_sugerida")(e.target.value)}
+            placeholder="Opcional"
+          />
+        </Field>
+        <Field label="Data de encerramento da parceria">
+          <Input
+            type="date"
+            value={form.data_encerramento_parceria_sugerida}
+            onChange={(e) => upd("data_encerramento_parceria_sugerida")(e.target.value)}
+            placeholder="Opcional"
           />
         </Field>
         <Field label="Instagram">

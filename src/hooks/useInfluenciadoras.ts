@@ -13,6 +13,7 @@ export type ClubeInfluenciadora = {
   status_cupom: "ativa" | "encerrada" | string | null;
   data_inicio: string | null;
   data_validade: string | null;
+  data_encerramento_parceria: string | null;
   instagram: string | null;
   contato: string | null;
 };
