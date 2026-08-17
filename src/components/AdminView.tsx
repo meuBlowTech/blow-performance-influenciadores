@@ -19,6 +19,7 @@ import { useInfluenciadoras, type ClubeInfluenciadora } from "@/hooks/useInfluen
 import { useInauguracoes, type Inauguracao } from "@/hooks/useInauguracoes";
 import { formatoLabel, unidadesDe, computeAllUnidades } from "@/lib/influenciadoras";
 import { extractUF } from "@/lib/inauguracoes";
+import { CustosInfluenciaTab } from "@/custo-influencer/CustosInfluenciaTab";
 
 // ---------- Types ----------
 type ClubeSolicitacao = {
@@ -48,7 +49,7 @@ const computeAllFormatos = (influenciadoras: ClubeInfluenciadora[]): string[] =>
   return Array.from(s).sort((a, b) => a.localeCompare(b, "pt-BR"));
 };
 
-type AdminSubTab = "aprovacoes" | "editar" | "unidades" | "inauguracoes";
+type AdminSubTab = "aprovacoes" | "editar" | "unidades" | "inauguracoes" | "custos";
 
 // ---------- Main ----------
 export default function AdminView() {
@@ -62,6 +63,7 @@ export default function AdminView() {
     { id: "editar", label: "Editar Influenciadoras" },
     { id: "unidades", label: "Unidades" },
     { id: "inauguracoes", label: "Gerenciar Inaugurações" },
+    { id: "custos", label: "Custos de Influência" },
   ];
 
   return (
@@ -100,6 +102,7 @@ export default function AdminView() {
                 reload={reloadInauguracoes}
               />
             )}
+            {sub === "custos" && <CustosInfluenciaTab />}
           </>
         )}
       </AdminGate>

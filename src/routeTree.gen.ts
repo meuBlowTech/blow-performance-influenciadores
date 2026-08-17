@@ -10,33 +10,65 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPublicHooksNovosPrevistosRouteImport } from './routes/api/public/hooks/novos-previstos'
+import { Route as ApiPublicHooksPagamentosPrevistosRouteImport } from './routes/api/public/hooks/pagamentos-previstos'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksNovosPrevistosRoute =
+  ApiPublicHooksNovosPrevistosRouteImport.update({
+    id: '/api/public/hooks/novos-previstos',
+    path: '/api/public/hooks/novos-previstos',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksPagamentosPrevistosRoute =
+  ApiPublicHooksPagamentosPrevistosRouteImport.update({
+    id: '/api/public/hooks/pagamentos-previstos',
+    path: '/api/public/hooks/pagamentos-previstos',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/public/hooks/novos-previstos': typeof ApiPublicHooksNovosPrevistosRoute
+  '/api/public/hooks/pagamentos-previstos': typeof ApiPublicHooksPagamentosPrevistosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/public/hooks/novos-previstos': typeof ApiPublicHooksNovosPrevistosRoute
+  '/api/public/hooks/pagamentos-previstos': typeof ApiPublicHooksPagamentosPrevistosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/public/hooks/novos-previstos': typeof ApiPublicHooksNovosPrevistosRoute
+  '/api/public/hooks/pagamentos-previstos': typeof ApiPublicHooksPagamentosPrevistosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/api/public/hooks/novos-previstos'
+    | '/api/public/hooks/pagamentos-previstos'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/api/public/hooks/novos-previstos'
+    | '/api/public/hooks/pagamentos-previstos'
+  id:
+    | '__root__'
+    | '/'
+    | '/api/public/hooks/novos-previstos'
+    | '/api/public/hooks/pagamentos-previstos'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiPublicHooksNovosPrevistosRoute: typeof ApiPublicHooksNovosPrevistosRoute
+  ApiPublicHooksPagamentosPrevistosRoute: typeof ApiPublicHooksPagamentosPrevistosRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +80,28 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/novos-previstos': {
+      id: '/api/public/hooks/novos-previstos'
+      path: '/api/public/hooks/novos-previstos'
+      fullPath: '/api/public/hooks/novos-previstos'
+      preLoaderRoute: typeof ApiPublicHooksNovosPrevistosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/pagamentos-previstos': {
+      id: '/api/public/hooks/pagamentos-previstos'
+      path: '/api/public/hooks/pagamentos-previstos'
+      fullPath: '/api/public/hooks/pagamentos-previstos'
+      preLoaderRoute: typeof ApiPublicHooksPagamentosPrevistosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiPublicHooksNovosPrevistosRoute: ApiPublicHooksNovosPrevistosRoute,
+  ApiPublicHooksPagamentosPrevistosRoute:
+    ApiPublicHooksPagamentosPrevistosRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
