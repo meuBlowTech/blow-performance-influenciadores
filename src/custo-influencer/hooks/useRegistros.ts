@@ -1,60 +1,48 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { supabase } from "@/custo-influencer/integrations/supabase/client";
+import {
+  listarRegistros,
+  criarRegistro,
+  atualizarRegistro,
+  excluirRegistro,
+  alternarStatusPagamento,
+} from "@/custo-influencer/actions/registros.actions";
 import type { Registro } from "@/custo-influencer/lib/db-types";
 
 export type RegistroInput = Omit<Registro, "id" | "criado_em" | "atualizado_em">;
 
-export function useRegistros() {
+export function useRegistros(password: string) {
   const qc = useQueryClient();
+  const queryKey = ["custos-registros"];
+
   const query = useQuery({
-    queryKey: ["registros"],
-    queryFn: async (): Promise<Registro[]> => {
-      const { data, error } = await supabase
-        .from("registros" as never)
-        .select("*")
-        .order("data_prevista", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as unknown as Registro[];
-    },
+    queryKey,
+    queryFn: async (): Promise<Registro[]> => listarRegistros({ data: { password } }),
   });
 
   const create = useMutation({
-    mutationFn: async (input: RegistroInput): Promise<Registro> => {
-      const { data, error } = await supabase
-        .from("registros" as never)
-        .insert(input as never)
-        .select()
-        .single();
-      if (error) throw error;
-      return data as unknown as Registro;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["registros"] }),
+    mutationFn: async (input: RegistroInput) =>
+      criarRegistro({ data: { password, input } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey }),
   });
 
   const update = useMutation({
-    mutationFn: async ({ id, patch }: { id: string; patch: Partial<RegistroInput> }): Promise<Registro> => {
-      const { data, error } = await supabase
-        .from("registros" as never)
-        .update(patch as never)
-        .eq("id", id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data as unknown as Registro;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["registros"] }),
+    mutationFn: async ({ id, patch }: { id: string; patch: Partial<RegistroInput> }) =>
+      atualizarRegistro({ data: { password, id, patch } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey }),
   });
 
   const remove = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("registros" as never).delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["registros"] }),
+    mutationFn: async (id: string) => excluirRegistro({ data: { password, id } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey }),
   });
 
-  return { ...query, create, update, remove };
+  const togglePay = useMutation({
+    mutationFn: async (id: string) => alternarStatusPagamento({ data: { password, id } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey }),
+  });
+
+  return { ...query, create, update, remove, togglePay };
 }
 
 export interface Filters {

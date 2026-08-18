@@ -11,7 +11,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 import { dateBR } from "@/lib/format";
 import { toast } from "sonner";
 import { useUnidadesUnificadas } from "@/hooks/useUnidadesUnificadas";
@@ -20,6 +19,7 @@ import { useInauguracoes, type Inauguracao } from "@/hooks/useInauguracoes";
 import { formatoLabel, unidadesDe, computeAllUnidades } from "@/lib/influenciadoras";
 import { extractUF } from "@/lib/inauguracoes";
 import { CustosInfluenciaTab } from "@/custo-influencer/CustosInfluenciaTab";
+import { ClipboardCheck, UserCog, Building2, PartyPopper, DollarSign, type LucideIcon } from "lucide-react";
 
 // ---------- Types ----------
 type ClubeSolicitacao = {
@@ -49,43 +49,61 @@ const computeAllFormatos = (influenciadoras: ClubeInfluenciadora[]): string[] =>
   return Array.from(s).sort((a, b) => a.localeCompare(b, "pt-BR"));
 };
 
-type AdminSubTab = "aprovacoes" | "editar" | "unidades" | "inauguracoes" | "custos";
+export type AdminSubTab = "aprovacoes" | "editar" | "unidades" | "inauguracoes" | "custos";
+
+// Metadata única das sub-seções do Admin — usada tanto pro cabeçalho
+// contextual aqui quanto pela lista vertical no sidebar principal
+// (src/routes/index.tsx), pra não duplicar rótulos/ícones em dois lugares.
+export const ADMIN_SUBTABS: { id: AdminSubTab; label: string; subtitle: string; icon: LucideIcon }[] = [
+  {
+    id: "aprovacoes",
+    label: "Aprovações",
+    subtitle: "Analise e aprove solicitações de cadastro no Clube.",
+    icon: ClipboardCheck,
+  },
+  {
+    id: "editar",
+    label: "Editar Influenciadoras",
+    subtitle: "Edite dados, cupons e status de parceria das influenciadoras cadastradas.",
+    icon: UserCog,
+  },
+  {
+    id: "unidades",
+    label: "Unidades",
+    subtitle:
+      "Lista mestre de unidades usada nos campos de seleção de \"Unidade\" em todo o dashboard — independente de a unidade já ter passado por uma inauguração acompanhada aqui.",
+    icon: Building2,
+  },
+  {
+    id: "inauguracoes",
+    label: "Gerenciar Inaugurações",
+    subtitle: "Cadastre e acompanhe as inaugurações de novas unidades.",
+    icon: PartyPopper,
+  },
+  {
+    id: "custos",
+    label: "Pagamento de Influenciadores",
+    subtitle: "Custos de influência por frente — Inauguração, AON de Marca e AON Franquias.",
+    icon: DollarSign,
+  },
+];
 
 // ---------- Main ----------
-export default function AdminView() {
+export default function AdminView({ sub }: { sub: AdminSubTab }) {
   const [adminPass, setAdminPass] = useState<string | null>(null);
-  const [sub, setSub] = useState<AdminSubTab>("aprovacoes");
   const { influenciadoras, reload } = useInfluenciadoras();
   const { rows: inauguracoes, reload: reloadInauguracoes } = useInauguracoes();
 
-  const tabs: { id: AdminSubTab; label: string }[] = [
-    { id: "aprovacoes", label: "Aprovações" },
-    { id: "editar", label: "Editar Influenciadoras" },
-    { id: "unidades", label: "Unidades" },
-    { id: "inauguracoes", label: "Gerenciar Inaugurações" },
-    { id: "custos", label: "Custos de Influência" },
-  ];
+  const current = ADMIN_SUBTABS.find((t) => t.id === sub) ?? ADMIN_SUBTABS[0];
 
   return (
     <main className="mx-auto max-w-[1400px] px-6 py-8">
       <AdminGate password={adminPass} onAuthed={setAdminPass}>
         {(pw) => (
           <>
-            <div className="mb-6 flex flex-wrap gap-1 border-b border-border">
-              {tabs.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => setSub(t.id)}
-                  className={cn(
-                    "px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px",
-                    sub === t.id
-                      ? "border-[color:var(--color-blow-orange-dark)] text-[color:var(--color-blow-orange-dark)]"
-                      : "border-transparent text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {t.label}
-                </button>
-              ))}
+            <div className="mb-6">
+              <h2 className="text-2xl font-semibold tracking-tight">{current.label}</h2>
+              <p className="text-sm text-muted-foreground mt-1">{current.subtitle}</p>
             </div>
 
             {sub === "aprovacoes" && (
@@ -102,7 +120,7 @@ export default function AdminView() {
                 reload={reloadInauguracoes}
               />
             )}
-            {sub === "custos" && <CustosInfluenciaTab />}
+            {sub === "custos" && <CustosInfluenciaTab password={pw} />}
           </>
         )}
       </AdminGate>
@@ -626,14 +644,6 @@ function UnidadesTab({ password }: { password: string }) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold tracking-tight">Unidades</h2>
-        <p className="text-sm text-muted-foreground">
-          Lista mestre de unidades usada nos campos de seleção de "Unidade" em todo o
-          dashboard — independente de a unidade já ter passado por uma inauguração
-          acompanhada aqui.
-        </p>
-      </div>
 
       <form onSubmit={add} className="card-blow p-5 flex flex-wrap items-end gap-3">
         <div className="min-w-[280px] flex-1">

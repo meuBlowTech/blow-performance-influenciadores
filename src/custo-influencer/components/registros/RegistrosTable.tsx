@@ -14,8 +14,8 @@ import {
 import { Pencil, Trash2, Check, RotateCcw, FileText, Paperclip, Loader2, Receipt, ChevronRight } from "lucide-react";
 import type { Registro } from "@/custo-influencer/lib/db-types";
 import { formatBRL, formatData } from "@/custo-influencer/lib/format";
-import { NF_ACCEPT, openNF, validateNFFile } from "@/custo-influencer/lib/nf-upload";
-import { COMP_ACCEPT, openComprovante, validateComprovanteFile } from "@/custo-influencer/lib/comprovante-upload";
+import { NF_ACCEPT, validateNFFile } from "@/custo-influencer/lib/nf-upload";
+import { COMP_ACCEPT, validateComprovanteFile } from "@/custo-influencer/lib/comprovante-upload";
 import { toast } from "sonner";
 import { bloqueioParaPago } from "@/custo-influencer/lib/pagamento-rules";
 
@@ -32,6 +32,8 @@ interface Props {
   onAttachNF: (r: Registro, file: File) => Promise<void>;
   onAttachComprovante: (r: Registro, file: File) => Promise<void>;
   onOpenDetails: (r: Registro) => void;
+  onViewNF: (path: string) => Promise<void>;
+  onViewComprovante: (path: string) => Promise<void>;
 }
 
 type UploadKind = "nf" | "comp";
@@ -64,6 +66,8 @@ export function RegistrosTable({
   onAttachNF,
   onAttachComprovante,
   onOpenDetails,
+  onViewNF,
+  onViewComprovante,
 }: Props) {
   const [toDelete, setToDelete] = useState<Registro | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -99,11 +103,11 @@ export function RegistrosTable({
   const stop = (e: React.MouseEvent) => e.stopPropagation();
 
   const handleViewNF = async (path: string) => {
-    try { await openNF(path); }
+    try { await onViewNF(path); }
     catch (e) { toast.error(e instanceof Error ? e.message : "Falha ao abrir NF"); }
   };
   const handleViewComp = async (path: string) => {
-    try { await openComprovante(path); }
+    try { await onViewComprovante(path); }
     catch (e) { toast.error(e instanceof Error ? e.message : "Falha ao abrir comprovante"); }
   };
 

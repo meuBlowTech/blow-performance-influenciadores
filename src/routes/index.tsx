@@ -44,9 +44,13 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import AdminView, { type AdminSubTab, ADMIN_SUBTABS } from "@/components/AdminView";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { supabase, type ConsumoCupom, type CupomEmitido, type Unidade } from "@/lib/supabase";
@@ -64,7 +68,6 @@ import { parseCodes } from "@/lib/coupons";
 import { comandaKey, extractUF } from "@/lib/inauguracoes";
 import { Button } from "@/components/ui/button";
 import ClubeView from "@/components/ClubeView";
-import AdminView from "@/components/AdminView";
 import InauguracaoView from "@/components/InauguracaoView";
 import InfluenciadorasSection from "@/components/InfluenciadorasSection";
 import { DateRangePicker } from "@/components/DateRangePicker";
@@ -149,8 +152,14 @@ function Dashboard() {
   const [activeTab, setActiveTab] = useState<
     "performance" | "influenciadores" | "clube" | "inauguracao" | "admin"
   >("performance");
+  const [adminSubTab, setAdminSubTab] = useState<AdminSubTab>("aprovacoes");
   const active =
     NAV_SECTIONS.find((s) => s.id === activeTab) ?? ADMIN_SECTION;
+
+  const goToAdmin = (subTab: AdminSubTab) => {
+    setActiveTab("admin");
+    setAdminSubTab(subTab);
+  };
 
   return (
     <SidebarProvider>
@@ -198,11 +207,26 @@ function Dashboard() {
                   <SidebarMenuButton
                     size="lg"
                     isActive={activeTab === ADMIN_SECTION.id}
-                    onClick={() => setActiveTab(ADMIN_SECTION.id)}
+                    onClick={() => goToAdmin("aprovacoes")}
                   >
                     <Lock />
                     <span>{ADMIN_SECTION.label}</span>
                   </SidebarMenuButton>
+                  <SidebarMenuSub>
+                    {ADMIN_SUBTABS.map((t) => (
+                      <SidebarMenuSubItem key={t.id}>
+                        <SidebarMenuSubButton
+                          asChild
+                          isActive={activeTab === ADMIN_SECTION.id && adminSubTab === t.id}
+                        >
+                          <button type="button" className="w-full" onClick={() => goToAdmin(t.id)}>
+                            <t.icon />
+                            <span>{t.label}</span>
+                          </button>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    ))}
+                  </SidebarMenuSub>
                 </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
@@ -213,12 +237,14 @@ function Dashboard() {
         <header className="flex h-16 shrink-0 items-center gap-3 border-b border-border px-4 md:px-6">
           <SidebarTrigger />
         </header>
-        <div className="px-4 pt-6 md:px-6">
-          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-            {active.label}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">{active.subtitle}</p>
-        </div>
+        {activeTab !== "admin" && (
+          <div className="px-4 pt-6 md:px-6">
+            <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
+              {active.label}
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">{active.subtitle}</p>
+          </div>
+        )}
         {activeTab === "performance" ? (
           <PerformanceView />
         ) : activeTab === "influenciadores" ? (
@@ -228,7 +254,7 @@ function Dashboard() {
         ) : activeTab === "inauguracao" ? (
           <InauguracaoView />
         ) : (
-          <AdminView />
+          <AdminView sub={adminSubTab} />
         )}
       </SidebarInset>
     </SidebarProvider>

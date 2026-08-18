@@ -7,8 +7,8 @@ import { Pencil, FileText, Paperclip, Receipt, Loader2, Trash2 } from "lucide-re
 import type { Registro } from "@/custo-influencer/lib/db-types";
 import { FRENTE_LABEL } from "@/custo-influencer/lib/db-types";
 import { formatBRL, formatData } from "@/custo-influencer/lib/format";
-import { NF_ACCEPT, openNF, validateNFFile } from "@/custo-influencer/lib/nf-upload";
-import { COMP_ACCEPT, openComprovante, validateComprovanteFile } from "@/custo-influencer/lib/comprovante-upload";
+import { NF_ACCEPT, validateNFFile } from "@/custo-influencer/lib/nf-upload";
+import { COMP_ACCEPT, validateComprovanteFile } from "@/custo-influencer/lib/comprovante-upload";
 import { toast } from "sonner";
 
 interface Props {
@@ -22,6 +22,8 @@ interface Props {
   onAttachNF: (r: Registro, file: File) => Promise<void>;
   onAttachComprovante: (r: Registro, file: File) => Promise<void>;
   onRemoveComprovante: (r: Registro) => Promise<void>;
+  onViewNF: (path: string) => Promise<void>;
+  onViewComprovante: (path: string) => Promise<void>;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -44,6 +46,8 @@ export function RegistroDetails({
   onAttachNF,
   onAttachComprovante,
   onRemoveComprovante,
+  onViewNF,
+  onViewComprovante,
 }: Props) {
   const nfRef = useRef<HTMLInputElement | null>(null);
   const compRef = useRef<HTMLInputElement | null>(null);
@@ -127,7 +131,7 @@ export function RegistroDetails({
               </div>
               <div className="flex items-center gap-1">
                 {r.nf_url && (
-                  <Button size="sm" variant="outline" onClick={() => openNF(r.nf_url!).catch((e) => toast.error(e instanceof Error ? e.message : "Falha"))}>
+                  <Button size="sm" variant="outline" onClick={() => onViewNF(r.nf_url!).catch((e) => toast.error(e instanceof Error ? e.message : "Falha"))}>
                     Abrir
                   </Button>
                 )}
@@ -151,7 +155,7 @@ export function RegistroDetails({
               </div>
               <div className="flex items-center gap-1">
                 {r.comprovante_url && (
-                  <Button size="sm" variant="outline" onClick={() => openComprovante(r.comprovante_url!).catch((e) => toast.error(e instanceof Error ? e.message : "Falha"))}>
+                  <Button size="sm" variant="outline" onClick={() => onViewComprovante(r.comprovante_url!).catch((e) => toast.error(e instanceof Error ? e.message : "Falha"))}>
                     Abrir
                   </Button>
                 )}
