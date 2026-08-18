@@ -143,7 +143,7 @@ const NAV_SECTIONS = [
 
 const ADMIN_SECTION = {
   id: "admin",
-  label: "Administração",
+  label: "Franqueadora",
   subtitle: "Aprovações, edição de influenciadoras, unidades e inaugurações — acesso restrito ao time de marketing franqueadora.",
   icon: Lock,
 } as const;
@@ -200,7 +200,7 @@ function Dashboard() {
             </SidebarGroupContent>
           </SidebarGroup>
           <SidebarGroup>
-            <SidebarGroupLabel>Administração</SidebarGroupLabel>
+            <SidebarGroupLabel>Franqueadora</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>

@@ -7,7 +7,7 @@ import type { Registro } from "@/custo-influencer/lib/db-types";
 
 // Rótulo genérico usado no histórico — este módulo não tem mais login
 // individual, então não há "quem" além de "alguém com a senha do Admin".
-const USUARIO = "Administração bLOw";
+const USUARIO = "Franqueadora bLOw";
 
 const registroInputSchema = z.object({
   frente: z.string(),

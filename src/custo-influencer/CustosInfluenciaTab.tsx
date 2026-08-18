@@ -35,7 +35,7 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 // ---------- Entry point ----------
-// Não há mais login próprio: quem já passou pela senha de Administração tem
+// Não há mais login próprio: quem já passou pela senha da Franqueadora tem
 // acesso completo a este módulo, igual as outras abas do Admin.
 export function CustosInfluenciaTab({ password }: { password: string }) {
   const [sub, setSub] = useState<CustosSubTab>("dashboard");

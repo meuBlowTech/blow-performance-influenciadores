@@ -3,7 +3,7 @@ import { z } from "zod";
 import { assertAdminPassword } from "./authz";
 import type { Registro } from "@/custo-influencer/lib/db-types";
 
-const USUARIO = "Administração bLOw";
+const USUARIO = "Franqueadora bLOw";
 
 const BUCKETS = { nf: "notas-fiscais", comp: "comprovantes-pagamento" } as const;
 const kindSchema = z.enum(["nf", "comp"]);
