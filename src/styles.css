@@ -59,63 +59,73 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Montserrat", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Montserrat", ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
   --radius: 0.75rem;
 
   /*
-   * bLOw palette — tema dark. Laranja continua a cor dominante (marca),
-   * verde/vermelho/âmbar como status — só que agora com papéis invertidos
-   * de claridade: os tons "-dark" (usados como texto/heading em cima de
-   * fundo claro no tema anterior) precisam ser CLAROS e vívidos pra ler
-   * bem em cima do fundo quase-preto. Os tons "-light" (antes fundos
-   * suaves claros) viram tons escuros sutis, mantendo o mesmo papel de
-   * "realce suave" — só que suave em cima de escuro.
+   * bLOw palette — identidade oficial (Manual de Identidade Visual | bLOw).
+   * Cores oficiais: verde #39513f (Pantone 5545 C) e laranja #d84116
+   * (Pantone 7417 C) — únicas cores permitidas para o logo. O manual não
+   * define hierarquia de uso em dashboard nem paleta de estado (erro/aviso/
+   * sucesso), então aplicamos como DECISÃO (não regra do manual):
+   *   - verde é a cor dominante de "superfície de marca" (sidebar, texto
+   *     principal) — replica o "cabeçalho/títulos em verde escuro" do
+   *     briefing original do produto;
+   *   - laranja é o acento vívido (CTA, ativo, destaque), usado com mais
+   *     moderação, como no logo;
+   *   - terracotta/coral (crítico/aviso) e os tons "pink" (washes neutros e
+   *     5ª cor de gráfico) não existem no manual — são derivados por
+   *     variação de luminosidade/matiz do laranja e do verde oficiais, em
+   *     vez de introduzir tons novos (fallback sugerido em
+   *     references/lacunas-e-divergencias.md da skill).
    */
-  --blow-orange-dark: oklch(0.72 0.15 48);        /* laranja vívido — títulos, números de destaque */
-  --blow-orange: oklch(0.7 0.17 50);              /* botões, realces, anéis de foco */
-  --blow-orange-light: oklch(0.76 0.13 55);       /* realces/hover suaves (usado com opacidade) */
-  --blow-terracotta: oklch(0.64 0.19 24);         /* crítico/expirado (vermelho vívido) */
-  --blow-coral: oklch(0.78 0.14 74);              /* aviso/expirando (âmbar) */
-  --blow-pink-light: oklch(0.32 0.035 40);        /* fundo suave neutro (usado com opacidade) */
-  --blow-pink-mute: oklch(0.58 0.07 45);          /* realce suave secundário */
-  --blow-neutral: oklch(0.3 0.015 40);            /* bordas padrão */
-  --blow-neutral-dark: oklch(0.38 0.02 40);       /* bordas fortes */
-  --blow-green-dark: oklch(0.72 0.13 150);        /* status "ativo/bom" — verde vívido */
-  --blow-green: oklch(0.62 0.13 150);             /* badges "ativa", ação de aprovar */
-  --blow-green-light: oklch(0.34 0.05 150);       /* tonalidade "saudável" — fundo suave */
+  --blow-orange-dark: oklch(0.50 0.16 35.2);      /* laranja escurecido — texto/títulos com contraste em fundo claro */
+  --blow-orange: oklch(0.591 0.194 35.2);         /* #d84116 oficial — botões primários, CTA, ativo */
+  --blow-orange-light: oklch(0.78 0.194 35.2);    /* realce/hover suave (usado com opacidade) */
+  --blow-terracotta: oklch(0.40 0.16 22);         /* crítico/expirado — derivado do laranja, mais escuro/avermelhado */
+  --blow-coral: oklch(0.50 0.15 48);              /* aviso/expirando — derivado do laranja, mais âmbar */
+  --blow-pink-light: oklch(0.92 0.025 152);       /* fundo suave neutro — derivado do verde (não é rosa, mantém o nome do token por compatibilidade) */
+  --blow-pink-mute: oklch(0.55 0.042 152);        /* realce suave secundário / 5ª cor de gráfico — verde médio */
+  --blow-neutral: oklch(0.90 0.012 80);           /* grades/eixos discretos em gráficos */
+  --blow-neutral-dark: oklch(0.75 0.015 80);      /* grades/eixos e bordas com mais contraste */
+  --blow-green-dark: oklch(0.32 0.042 152);       /* verde escurecido — hover/estados fortes */
+  --blow-green: oklch(0.410 0.042 152);           /* #39513f oficial — texto principal, status "ativo" */
+  --blow-green-light: oklch(0.78 0.042 152);      /* tonalidade "saudável" — realce suave em gráficos */
 
-  --background: oklch(0.15 0.012 40);             /* quase-preto quente */
-  --foreground: oklch(0.95 0.01 50);              /* quase-branco quente — texto padrão */
-  --card: oklch(0.19 0.014 40);                   /* superfície dos cards, um tom acima do fundo */
+  --background: oklch(0.972 0.012 96.4);          /* #f8f6ed — creme, fundo geral da marca */
+  --foreground: var(--blow-green);                /* texto principal em verde escuro, como no briefing */
+  --card: oklch(1 0 0);                           /* cards em branco puro sobre o fundo creme */
   --card-foreground: var(--foreground);
-  --popover: oklch(0.19 0.014 40);
+  --popover: oklch(1 0 0);
   --popover-foreground: var(--foreground);
 
   --primary: var(--blow-orange);
   --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.24 0.02 40);
+  --secondary: oklch(0.93 0.02 152);              /* verde muito claro — botões/superfícies secundárias */
   --secondary-foreground: var(--foreground);
-  --muted: oklch(0.22 0.015 40);
-  --muted-foreground: oklch(0.65 0.02 45);
-  --accent: oklch(0.26 0.03 45);
+  --muted: oklch(0.961 0 89.9);                   /* #f2f2f2 oficial — fundos discretos */
+  --muted-foreground: oklch(0.50 0.01 90);
+  --accent: oklch(0.94 0.025 40);                 /* wash laranja clarinho — hover/realce */
   --accent-foreground: var(--foreground);
-  --destructive: oklch(0.6 0.2 25);
+  --destructive: var(--blow-terracotta);
   --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.28 0.015 40);
+  --border: oklch(0.88 0.012 80);
   --input: var(--border);
   --ring: var(--blow-orange);
 
-  --sidebar: var(--background);
-  --sidebar-foreground: var(--foreground);
+  /* Sidebar em verde escuro — "cabeçalho" da marca — com laranja como acento
+     do item ativo. Decisão de composição, não regra do manual. */
+  --sidebar: var(--blow-green);
+  --sidebar-foreground: oklch(0.95 0.015 70);
   --sidebar-primary: var(--blow-orange);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.22 0.02 40);
-  --sidebar-accent-foreground: var(--foreground);
-  --sidebar-border: var(--border);
+  --sidebar-accent: oklch(0.48 0.045 152);
+  --sidebar-accent-foreground: var(--sidebar-foreground);
+  --sidebar-border: oklch(0.34 0.045 152);
   --sidebar-ring: var(--blow-orange);
 }
 
@@ -135,9 +145,9 @@
   h1,
   h2,
   h3 {
-    font-family: var(--font-sans);
+    font-family: var(--font-display);
     letter-spacing: -0.015em;
-    font-weight: 600;
+    font-weight: 700;
   }
 }
 
@@ -146,6 +156,6 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
   box-shadow:
-    0 1px 2px oklch(0 0 0 / 0.3),
-    0 8px 24px -12px oklch(0 0 0 / 0.5);
+    0 1px 2px oklch(0.41 0.042 152 / 0.06),
+    0 8px 24px -12px oklch(0.41 0.042 152 / 0.16);
 }

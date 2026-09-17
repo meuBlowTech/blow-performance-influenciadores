@@ -358,6 +358,7 @@ export default function InfluenciadorasSection() {
                   }
                 />
                 <Tooltip
+                  payloadUniqBy={true}
                   cursor={{ fill: "var(--color-accent)", fillOpacity: 0.4 }}
                   itemStyle={{ color: "var(--color-foreground)" }}
                   contentStyle={{

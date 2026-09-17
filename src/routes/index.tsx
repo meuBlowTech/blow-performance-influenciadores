@@ -112,6 +112,23 @@ const BAR_PALETTE = [
   C.pinkMute,
 ];
 
+function diasDesde(isoDayStr: string | null): number | null {
+  if (!isoDayStr) return null;
+  const [y, m, d] = isoDayStr.split("-").map(Number);
+  const data = new Date(y, (m || 1) - 1, d || 1);
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  data.setHours(0, 0, 0, 0);
+  return Math.round((hoje.getTime() - data.getTime()) / 86400000);
+}
+
+function periodoUsoLabel(primeira: string | null, ultima: string | null): string {
+  if (!primeira || !ultima) return "—";
+  const p = dateBR(`${primeira}T00:00:00`);
+  const u = dateBR(`${ultima}T00:00:00`);
+  return p === u ? p : `${p} – ${u}`;
+}
+
 type Row = ConsumoCupom;
 
 const NAV_SECTIONS = [
@@ -170,10 +187,15 @@ function Dashboard() {
               <Zap className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <div className="text-lg font-semibold leading-none tracking-tight">
-                b<span className="italic">L</span>Ow
+              <div className="text-lg font-bold leading-none tracking-tight">
+                <span className="sr-only">bLOw</span>
+                <span aria-hidden="true" className="inline-flex items-center">
+                  BL
+                  <span className="mx-[0.06em] inline-block h-[0.62em] w-[0.62em] rounded-full border-[0.15em] border-[color:var(--color-blow-orange)]" />
+                  W
+                </span>
               </div>
-              <div className="mt-0.5 text-[11px] leading-tight text-muted-foreground">
+              <div className="mt-0.5 text-[11px] leading-tight text-sidebar-foreground/70">
                 Performance de Influência
               </div>
             </div>
@@ -430,6 +452,8 @@ function PerformanceView() {
       nome: string;
       receita: number;
       comandas: Set<string>;
+      primeiraUtilizacao: string | null;
+      ultimaUtilizacao: string | null;
     };
     const map = new Map<string, Agg>();
     for (const r of filtered) {
@@ -443,6 +467,8 @@ function PerformanceView() {
           nome: registeredName || r.nome_cupom || "",
           receita: 0,
           comandas: new Set(),
+          primeiraUtilizacao: null,
+          ultimaUtilizacao: null,
         });
       const a = map.get(code)!;
       a.receita += Number(r.valor_liquido) || 0;
@@ -453,6 +479,15 @@ function PerformanceView() {
           }`,
         );
       if (!a.nome && registeredName) a.nome = registeredName;
+      if (r.data_hora_atendimento) {
+        const day = isoDay(r.data_hora_atendimento);
+        if (day) {
+          if (!a.primeiraUtilizacao || day < a.primeiraUtilizacao)
+            a.primeiraUtilizacao = day;
+          if (!a.ultimaUtilizacao || day > a.ultimaUtilizacao)
+            a.ultimaUtilizacao = day;
+        }
+      }
     }
     return Array.from(map.values())
       .map((a) => ({
@@ -461,6 +496,8 @@ function PerformanceView() {
         receita: a.receita,
         atendimentos: a.comandas.size,
         ticket: a.comandas.size ? a.receita / a.comandas.size : 0,
+        primeiraUtilizacao: a.primeiraUtilizacao,
+        ultimaUtilizacao: a.ultimaUtilizacao,
       }))
       .sort((a, b) => b.receita - a.receita);
 
@@ -748,6 +785,7 @@ function PerformanceView() {
                     }
                   />
                   <Tooltip
+                    payloadUniqBy={true}
                     contentStyle={{
                       background: "var(--color-card)",
                       border: "1px solid var(--color-border)",
@@ -763,11 +801,13 @@ function PerformanceView() {
                     dataKey="receita"
                     stroke="none"
                     fill="url(#receitaGradient)"
+                    legendType="none"
                     isAnimationActive={false}
                   />
                   <Line
                     type="monotone"
                     dataKey="receita"
+                    name="Receita"
                     stroke={C.greenDark}
                     strokeWidth={2.5}
                     dot={{ r: 3, fill: C.terracotta, stroke: C.terracotta }}
@@ -848,6 +888,8 @@ function PerformanceView() {
             <h2 className="text-xl md:text-2xl">Desempenho por influenciadora</h2>
             <p className="text-sm text-muted-foreground">
               Cada cupom representa uma influenciadora. Respeita filtros de período e unidade.
+              "Período de uso" mostra a 1ª e a última data com venda no cupom dentro do filtro
+              atual — amplie o período para enxergar há quanto tempo ele parou de ser usado.
             </p>
           </div>
           <div className="overflow-x-auto rounded-xl border border-border mb-6">
@@ -858,23 +900,49 @@ function PerformanceView() {
                   <Th className="text-right">Nº cupons utilizados</Th>
                   <Th className="text-right">Receita total</Th>
                   <Th className="text-right">Ticket médio</Th>
+                  <Th>Período de uso</Th>
+                  <Th>Inativo há</Th>
                 </tr>
               </thead>
               <tbody>
-                {influencerRanking.slice(0, expandInfluencers ? undefined : 10).map((r) => (
-                  <tr key={r.codigo} className="border-t border-border hover:bg-muted/50">
-                    <Td>
-                      <div className="font-medium">{r.nome || "—"}</div>
-                      <div className="text-xs text-muted-foreground">{r.codigo}</div>
-                    </Td>
-                    <Td className="text-right tabular-nums">{num(r.atendimentos)}</Td>
-                    <Td className="text-right tabular-nums">{brl(r.receita)}</Td>
-                    <Td className="text-right tabular-nums">{brl(r.ticket)}</Td>
-                  </tr>
-                ))}
+                {influencerRanking.slice(0, expandInfluencers ? undefined : 10).map((r) => {
+                  const dias = diasDesde(r.ultimaUtilizacao);
+                  return (
+                    <tr key={r.codigo} className="border-t border-border hover:bg-muted/50">
+                      <Td>
+                        <div className="font-medium">{r.nome || "—"}</div>
+                        <div className="text-xs text-muted-foreground">{r.codigo}</div>
+                      </Td>
+                      <Td className="text-right tabular-nums">{num(r.atendimentos)}</Td>
+                      <Td className="text-right tabular-nums">{brl(r.receita)}</Td>
+                      <Td className="text-right tabular-nums">{brl(r.ticket)}</Td>
+                      <Td className="whitespace-nowrap text-muted-foreground">
+                        {periodoUsoLabel(r.primeiraUtilizacao, r.ultimaUtilizacao)}
+                      </Td>
+                      <Td>
+                        {dias === null ? (
+                          "—"
+                        ) : (
+                          <span
+                            className={cn(
+                              "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap",
+                              dias <= 30
+                                ? "bg-[color:var(--color-blow-green-light)]/40 text-[color:var(--color-blow-green-dark)]"
+                                : dias <= 60
+                                  ? "bg-[color:var(--color-blow-coral)]/15 text-[color:var(--color-blow-coral)]"
+                                  : "bg-[color:var(--color-blow-terracotta)]/15 text-[color:var(--color-blow-terracotta)]",
+                            )}
+                          >
+                            {dias === 0 ? "hoje" : `${dias}d`}
+                          </span>
+                        )}
+                      </Td>
+                    </tr>
+                  );
+                })}
                 {influencerRanking.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="p-6 text-center text-muted-foreground text-sm">
+                    <td colSpan={6} className="p-6 text-center text-muted-foreground text-sm">
                       Sem dados no período.
                     </td>
                   </tr>

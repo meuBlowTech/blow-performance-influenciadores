@@ -529,6 +529,7 @@ function UnidadeDetalhe({
                   tickFormatter={(v) => brl(Number(v)).replace("R$", "").trim()}
                 />
                 <Tooltip
+                  payloadUniqBy={true}
                   contentStyle={{
                     background: "var(--color-card)",
                     border: "1px solid var(--color-border)",
@@ -544,6 +545,7 @@ function UnidadeDetalhe({
                   dataKey="receita"
                   stroke="none"
                   fill="url(#timelineGradient)"
+                  legendType="none"
                   isAnimationActive={false}
                 />
                 <Line
