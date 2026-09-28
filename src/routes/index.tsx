@@ -364,20 +364,18 @@ function PerformanceView() {
     [rows],
   );
 
-  const allCupons = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          rows
-            .map((r) => r.codigo_cupom)
-            .filter(
-              (c): c is string =>
-                !!c && influencerMap.has(c.trim().toUpperCase()),
-            ),
-        ),
-      ).sort((a, b) => a.localeCompare(b, "pt-BR")),
-    [rows, influencerMap],
-  );
+  const allCupons = useMemo(() => {
+    // Inclui todos os cupons cadastrados em clube_influenciadoras, mesmo os
+    // que ainda não têm nenhum consumo registrado pela Trinks, para permitir
+    // filtrar/conferir um cupom "zerado" na aba Geral.
+    const fromRows = rows
+      .map((r) => r.codigo_cupom)
+      .filter((c): c is string => !!c && influencerMap.has(c.trim().toUpperCase()))
+      .map((c) => c.trim().toUpperCase());
+    return Array.from(new Set([...fromRows, ...influencerMap.keys()])).sort(
+      (a, b) => a.localeCompare(b, "pt-BR"),
+    );
+  }, [rows, influencerMap]);
 
 
   const filtered = useMemo(() => {
@@ -391,7 +389,7 @@ function PerformanceView() {
       const code = (r.codigo_cupom || "").trim().toUpperCase();
       if (!code || !influencerMap.has(code)) return false;
       if (uSet && !uSet.has(r.estabelecimento || "")) return false;
-      if (cSet && !cSet.has(r.codigo_cupom || "")) return false;
+      if (cSet && !cSet.has(code)) return false;
       if (startTs !== null || endTs !== null) {
         if (!r.data_hora_atendimento) return false;
         const t = new Date(r.data_hora_atendimento).getTime();
