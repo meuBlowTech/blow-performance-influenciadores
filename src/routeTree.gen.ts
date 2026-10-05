@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiPublicRadarInfluenciaRouteImport } from './routes/api/public/radar-influencia'
+import { Route as ApiPublicRadarInfluenciaAlertasRouteImport } from './routes/api/public/radar-influencia-alertas'
 import { Route as ApiPublicHooksNovosPrevistosRouteImport } from './routes/api/public/hooks/novos-previstos'
 import { Route as ApiPublicHooksPagamentosPrevistosRouteImport } from './routes/api/public/hooks/pagamentos-previstos'
 
@@ -23,6 +24,12 @@ const ApiPublicRadarInfluenciaRoute =
   ApiPublicRadarInfluenciaRouteImport.update({
     id: '/api/public/radar-influencia',
     path: '/api/public/radar-influencia',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicRadarInfluenciaAlertasRoute =
+  ApiPublicRadarInfluenciaAlertasRouteImport.update({
+    id: '/api/public/radar-influencia-alertas',
+    path: '/api/public/radar-influencia-alertas',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicHooksNovosPrevistosRoute =
@@ -41,12 +48,14 @@ const ApiPublicHooksPagamentosPrevistosRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/public/radar-influencia': typeof ApiPublicRadarInfluenciaRoute
+  '/api/public/radar-influencia-alertas': typeof ApiPublicRadarInfluenciaAlertasRoute
   '/api/public/hooks/novos-previstos': typeof ApiPublicHooksNovosPrevistosRoute
   '/api/public/hooks/pagamentos-previstos': typeof ApiPublicHooksPagamentosPrevistosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/public/radar-influencia': typeof ApiPublicRadarInfluenciaRoute
+  '/api/public/radar-influencia-alertas': typeof ApiPublicRadarInfluenciaAlertasRoute
   '/api/public/hooks/novos-previstos': typeof ApiPublicHooksNovosPrevistosRoute
   '/api/public/hooks/pagamentos-previstos': typeof ApiPublicHooksPagamentosPrevistosRoute
 }
@@ -54,6 +63,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/api/public/radar-influencia': typeof ApiPublicRadarInfluenciaRoute
+  '/api/public/radar-influencia-alertas': typeof ApiPublicRadarInfluenciaAlertasRoute
   '/api/public/hooks/novos-previstos': typeof ApiPublicHooksNovosPrevistosRoute
   '/api/public/hooks/pagamentos-previstos': typeof ApiPublicHooksPagamentosPrevistosRoute
 }
@@ -62,18 +72,21 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/api/public/radar-influencia'
+    | '/api/public/radar-influencia-alertas'
     | '/api/public/hooks/novos-previstos'
     | '/api/public/hooks/pagamentos-previstos'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/api/public/radar-influencia'
+    | '/api/public/radar-influencia-alertas'
     | '/api/public/hooks/novos-previstos'
     | '/api/public/hooks/pagamentos-previstos'
   id:
     | '__root__'
     | '/'
     | '/api/public/radar-influencia'
+    | '/api/public/radar-influencia-alertas'
     | '/api/public/hooks/novos-previstos'
     | '/api/public/hooks/pagamentos-previstos'
   fileRoutesById: FileRoutesById
@@ -81,6 +94,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiPublicRadarInfluenciaRoute: typeof ApiPublicRadarInfluenciaRoute
+  ApiPublicRadarInfluenciaAlertasRoute: typeof ApiPublicRadarInfluenciaAlertasRoute
   ApiPublicHooksNovosPrevistosRoute: typeof ApiPublicHooksNovosPrevistosRoute
   ApiPublicHooksPagamentosPrevistosRoute: typeof ApiPublicHooksPagamentosPrevistosRoute
 }
@@ -99,6 +113,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/radar-influencia'
       fullPath: '/api/public/radar-influencia'
       preLoaderRoute: typeof ApiPublicRadarInfluenciaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/radar-influencia-alertas': {
+      id: '/api/public/radar-influencia-alertas'
+      path: '/api/public/radar-influencia-alertas'
+      fullPath: '/api/public/radar-influencia-alertas'
+      preLoaderRoute: typeof ApiPublicRadarInfluenciaAlertasRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/novos-previstos': {
@@ -121,6 +142,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiPublicRadarInfluenciaRoute: ApiPublicRadarInfluenciaRoute,
+  ApiPublicRadarInfluenciaAlertasRoute: ApiPublicRadarInfluenciaAlertasRoute,
   ApiPublicHooksNovosPrevistosRoute: ApiPublicHooksNovosPrevistosRoute,
   ApiPublicHooksPagamentosPrevistosRoute:
     ApiPublicHooksPagamentosPrevistosRoute,
