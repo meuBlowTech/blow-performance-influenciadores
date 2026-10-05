@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as RadarInfluenciaChatgptRouteImport } from './routes/radar-influencia-chatgpt'
 import { Route as ApiPublicRadarInfluenciaRouteImport } from './routes/api/public/radar-influencia'
 import { Route as ApiPublicRadarInfluenciaAlertasRouteImport } from './routes/api/public/radar-influencia-alertas'
 import { Route as ApiPublicRadarInfluenciaResumoRouteImport } from './routes/api/public/radar-influencia-resumo'
@@ -19,6 +20,11 @@ import { Route as ApiPublicHooksPagamentosPrevistosRouteImport } from './routes/
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RadarInfluenciaChatgptRoute = RadarInfluenciaChatgptRouteImport.update({
+  id: '/radar-influencia-chatgpt',
+  path: '/radar-influencia-chatgpt',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicRadarInfluenciaRoute =
@@ -54,6 +60,7 @@ const ApiPublicHooksPagamentosPrevistosRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/radar-influencia-chatgpt': typeof RadarInfluenciaChatgptRoute
   '/api/public/radar-influencia': typeof ApiPublicRadarInfluenciaRoute
   '/api/public/radar-influencia-alertas': typeof ApiPublicRadarInfluenciaAlertasRoute
   '/api/public/radar-influencia-resumo': typeof ApiPublicRadarInfluenciaResumoRoute
@@ -62,6 +69,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/radar-influencia-chatgpt': typeof RadarInfluenciaChatgptRoute
   '/api/public/radar-influencia': typeof ApiPublicRadarInfluenciaRoute
   '/api/public/radar-influencia-alertas': typeof ApiPublicRadarInfluenciaAlertasRoute
   '/api/public/radar-influencia-resumo': typeof ApiPublicRadarInfluenciaResumoRoute
@@ -71,6 +79,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/radar-influencia-chatgpt': typeof RadarInfluenciaChatgptRoute
   '/api/public/radar-influencia': typeof ApiPublicRadarInfluenciaRoute
   '/api/public/radar-influencia-alertas': typeof ApiPublicRadarInfluenciaAlertasRoute
   '/api/public/radar-influencia-resumo': typeof ApiPublicRadarInfluenciaResumoRoute
@@ -81,6 +90,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/radar-influencia-chatgpt'
     | '/api/public/radar-influencia'
     | '/api/public/radar-influencia-alertas'
     | '/api/public/radar-influencia-resumo'
@@ -89,6 +99,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/radar-influencia-chatgpt'
     | '/api/public/radar-influencia'
     | '/api/public/radar-influencia-alertas'
     | '/api/public/radar-influencia-resumo'
@@ -97,6 +108,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/radar-influencia-chatgpt'
     | '/api/public/radar-influencia'
     | '/api/public/radar-influencia-alertas'
     | '/api/public/radar-influencia-resumo'
@@ -106,6 +118,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  RadarInfluenciaChatgptRoute: typeof RadarInfluenciaChatgptRoute
   ApiPublicRadarInfluenciaRoute: typeof ApiPublicRadarInfluenciaRoute
   ApiPublicRadarInfluenciaAlertasRoute: typeof ApiPublicRadarInfluenciaAlertasRoute
   ApiPublicRadarInfluenciaResumoRoute: typeof ApiPublicRadarInfluenciaResumoRoute
@@ -120,6 +133,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/radar-influencia-chatgpt': {
+      id: '/radar-influencia-chatgpt'
+      path: '/radar-influencia-chatgpt'
+      fullPath: '/radar-influencia-chatgpt'
+      preLoaderRoute: typeof RadarInfluenciaChatgptRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/radar-influencia': {
@@ -162,6 +182,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  RadarInfluenciaChatgptRoute: RadarInfluenciaChatgptRoute,
   ApiPublicRadarInfluenciaRoute: ApiPublicRadarInfluenciaRoute,
   ApiPublicRadarInfluenciaAlertasRoute: ApiPublicRadarInfluenciaAlertasRoute,
   ApiPublicRadarInfluenciaResumoRoute: ApiPublicRadarInfluenciaResumoRoute,
