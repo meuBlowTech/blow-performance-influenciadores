@@ -1298,6 +1298,7 @@ function CuradoriaView() {
         }
 
         // consumo aggregate: global by code + per-unit by code
+        const trinksUnits = new Set<string>();
         const codeMap = new Map<
           string,
           { comandas: Set<string>; receita: number }
