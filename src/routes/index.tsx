@@ -1319,6 +1319,7 @@ function CuradoriaView() {
             if (error) throw error;
             if (!data || data.length === 0) break;
             for (const r of data as ConsumoCupom[]) {
+              if (r.estabelecimento?.trim()) trinksUnits.add(r.estabelecimento.trim());
               const code = (r.codigo_cupom || "").trim().toUpperCase();
               if (!code) continue;
               const day = r.data_hora_atendimento
@@ -1367,7 +1368,13 @@ function CuradoriaView() {
 
         if (alive) {
           setEmitidos(emAll);
-          setUnidadesList((uData as Unidade[]) || []);
+          const nomes = new Set<string>();
+          const lista: Unidade[] = [];
+          for (const u of (uData as Unidade[]) || []) {
+            if (u.nome && !nomes.has(u.nome.trim())) { nomes.add(u.nome.trim()); lista.push(u); }
+          }
+          for (const n of trinksUnits) if (!nomes.has(n)) { nomes.add(n); lista.push({ nome: n } as Unidade); }
+          setUnidadesList(lista);
           setConsumoCodes(flat);
           setUnitCodeMap(flatUnit);
         }
