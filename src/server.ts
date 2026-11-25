@@ -2,6 +2,10 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { agendarSincronizacaoUnidades } from "./lib/trinks-sync.server";
+
+// Lojas da Trinks → lista de unidades, a cada 6h (só com TRINKS_SYNC_AUTO=1).
+agendarSincronizacaoUnidades();
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;

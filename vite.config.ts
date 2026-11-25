@@ -5,6 +5,16 @@
 //     error logger plugins, and sandbox detection (port/host/strictPort).
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import { loadEnv } from "vite";
+
+// Server functions leem segredos de process.env (SUPABASE_SERVICE_ROLE_KEY etc.).
+// O Vite só expõe VITE_* por conta própria, então carregamos o .env.local aqui
+// sem sobrescrever o que já veio do ambiente.
+for (const [key, value] of Object.entries(
+  loadEnv(process.env.NODE_ENV ?? "development", process.cwd(), ""),
+)) {
+  process.env[key] ??= value;
+}
 
 // Opt-in static build for GitHub Pages (`DEPLOY_TARGET=github-pages npm run build`).
 // Only applies outside the Lovable sandbox — inside it, preset/base overrides are
@@ -23,5 +33,13 @@ export default defineConfig({
         vite: { base: "/blow-performance-influenciadores/" },
         nitro: { preset: "node-server" },
       }
-    : {}),
+    : {
+        // Acesso externo via Cloudflare Tunnel (blow-influenciadores).
+        vite: {
+          server: { allowedHosts: ["influencers.blow.ia.br"] },
+          preview: { allowedHosts: ["influencers.blow.ia.br"] },
+        },
+        // Build roda como servidor Node nesta máquina (scripts/start-site.cmd).
+        nitro: { preset: "node-server" },
+      }),
 });

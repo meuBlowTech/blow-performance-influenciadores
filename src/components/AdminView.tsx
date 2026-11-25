@@ -19,7 +19,8 @@ import { useInauguracoes, type Inauguracao } from "@/hooks/useInauguracoes";
 import { formatoLabel, unidadesDe, computeAllUnidades } from "@/lib/influenciadoras";
 import { extractUF } from "@/lib/inauguracoes";
 import { CustosInfluenciaTab } from "@/custo-influencer/CustosInfluenciaTab";
-import { ClipboardCheck, UserCog, Building2, PartyPopper, DollarSign, type LucideIcon } from "lucide-react";
+import { sincronizarUnidadesTrinks } from "@/lib/trinks-unidades.actions";
+import { ClipboardCheck, UserCog, Building2, PartyPopper, DollarSign, KeyRound, type LucideIcon } from "lucide-react";
 
 // ---------- Types ----------
 type ClubeSolicitacao = {
@@ -49,7 +50,7 @@ const computeAllFormatos = (influenciadoras: ClubeInfluenciadora[]): string[] =>
   return Array.from(s).sort((a, b) => a.localeCompare(b, "pt-BR"));
 };
 
-export type AdminSubTab = "aprovacoes" | "editar" | "unidades" | "inauguracoes" | "custos";
+export type AdminSubTab = "aprovacoes" | "editar" | "unidades" | "inauguracoes" | "custos" | "senha";
 
 // Metadata única das sub-seções do Admin — usada tanto pro cabeçalho
 // contextual aqui quanto pela lista vertical no sidebar principal
@@ -86,6 +87,12 @@ export const ADMIN_SUBTABS: { id: AdminSubTab; label: string; subtitle: string; 
     subtitle: "Custos de influência por frente — Inauguração, AON de Marca e AON Franquias.",
     icon: DollarSign,
   },
+  {
+    id: "senha",
+    label: "Trocar senha",
+    subtitle: "Altere a senha de administrador usada por toda a equipe da Franqueadora.",
+    icon: KeyRound,
+  },
 ];
 
 // ---------- Main ----------
@@ -121,10 +128,64 @@ export default function AdminView({ sub }: { sub: AdminSubTab }) {
               />
             )}
             {sub === "custos" && <CustosInfluenciaTab password={pw} />}
+            {sub === "senha" && <TrocarSenhaTab password={pw} onChanged={setAdminPass} />}
           </>
         )}
       </AdminGate>
     </main>
+  );
+}
+
+// ---------- Trocar senha ----------
+function TrocarSenhaTab({
+  password,
+  onChanged,
+}: {
+  password: string;
+  onChanged: (pw: string) => void;
+}) {
+  const [nova, setNova] = useState("");
+  const [confirma, setConfirma] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (nova !== confirma) {
+      toast.error("As senhas não conferem.");
+      return;
+    }
+    setSaving(true);
+    const { data, error } = await supabase.rpc("clube_trocar_senha", {
+      p_senha_atual: password,
+      p_senha_nova: nova,
+    });
+    setSaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    const msg = (data as { message?: string } | null)?.message ?? "Senha alterada.";
+    const ok = (data as { success?: boolean } | null)?.success !== false;
+    (ok ? toast.success : toast.error)(msg);
+    if (ok) {
+      onChanged(nova);
+      setNova("");
+      setConfirma("");
+    }
+  };
+
+  return (
+    <form onSubmit={submit} className="card-blow p-6 space-y-4 max-w-sm">
+      <Field label="Nova senha (mínimo 8 caracteres)">
+        <Input type="password" value={nova} onChange={(e) => setNova(e.target.value)} />
+      </Field>
+      <Field label="Confirme a nova senha">
+        <Input type="password" value={confirma} onChange={(e) => setConfirma(e.target.value)} />
+      </Field>
+      <Button type="submit" disabled={saving || nova.length < 8 || !confirma} className="w-full">
+        {saving ? "Salvando…" : "Trocar senha"}
+      </Button>
+    </form>
   );
 }
 
@@ -644,6 +705,7 @@ function UnidadesTab({ password }: { password: string }) {
 
   return (
     <div className="space-y-6">
+      <SincronizarTrinks password={password} onSynced={reload} />
 
       <form onSubmit={add} className="card-blow p-5 flex flex-wrap items-end gap-3">
         <div className="min-w-[280px] flex-1">
@@ -687,6 +749,106 @@ function UnidadesTab({ password }: { password: string }) {
               </Button>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------- Sincronizar unidades com a Trinks ----------
+type SyncTrinks = Awaited<ReturnType<typeof sincronizarUnidadesTrinks>>;
+
+function SincronizarTrinks({
+  password,
+  onSynced,
+}: {
+  password: string;
+  onSynced: () => void | Promise<void>;
+}) {
+  const [preview, setPreview] = useState<SyncTrinks | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const run = async (aplicar: boolean) => {
+    setBusy(true);
+    try {
+      const r = await sincronizarUnidadesTrinks({ data: { password, aplicar } });
+      if (aplicar) {
+        if (r.erros.length) toast.error(r.erros.join(" · "));
+        else toast.success(`Sincronizado: ${r.adicionadas.length} adicionada(s), ${r.renomeadas.length} renomeada(s).`);
+        setPreview(null);
+        await onSynced();
+      } else {
+        setPreview(r);
+        if (r.adicionadas.length === 0 && r.renomeadas.length === 0)
+          toast.success("A lista já está igual à da Trinks.");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="card-blow p-5 space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="text-sm font-medium">Lojas da Trinks</div>
+          <div className="text-xs text-muted-foreground">
+            A lista segue os estabelecimentos da Trinks: sincroniza sozinha a cada 6 horas. Use o botão
+            pra sincronizar agora.
+          </div>
+        </div>
+        <Button variant="outline" onClick={() => run(false)} disabled={busy}>
+          {busy && !preview ? "Buscando…" : "Sincronizar com a Trinks"}
+        </Button>
+      </div>
+
+      {preview && (
+        <div className="space-y-3 text-sm">
+          <p className="text-muted-foreground">
+            {preview.totalTrinks} lojas na Trinks · {preview.adicionadas.length} a adicionar ·{" "}
+            {preview.renomeadas.length} a renomear
+          </p>
+          {preview.adicionadas.length > 0 && (
+            <div>
+              <div className="text-xs font-medium mb-1">Adicionar</div>
+              <ul className="list-disc pl-5">
+                {preview.adicionadas.map((n) => (
+                  <li key={n}>{n}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {preview.renomeadas.length > 0 && (
+            <div>
+              <div className="text-xs font-medium mb-1">Renomear (influenciadoras e inaugurações acompanham)</div>
+              <ul className="list-disc pl-5">
+                {preview.renomeadas.map((r) => (
+                  <li key={r.de}>
+                    {r.de} → {r.para}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {(preview.adicionadas.length > 0 || preview.renomeadas.length > 0 || preview.vinculadas > 0) && (
+            <Button onClick={() => run(true)} disabled={busy}>
+              {busy ? "Sincronizando…" : "Aplicar"}
+            </Button>
+          )}
+          {preview.semTrinks.length > 0 && (
+            <details className="text-xs text-muted-foreground">
+              <summary className="cursor-pointer">
+                {preview.semTrinks.length} unidade(s) do app que não estão na Trinks (mantidas)
+              </summary>
+              <ul className="list-disc pl-5 mt-1">
+                {preview.semTrinks.map((n) => (
+                  <li key={n}>{n}</li>
+                ))}
+              </ul>
+            </details>
+          )}
         </div>
       )}
     </div>

@@ -1,17 +1,16 @@
-// Server-side Supabase client do projeto "Custos de Influência", com service
-// role key - bypassa RLS. Use só em server functions/rotas server, nunca
-// exponha ao client.
+// Server-side Supabase client do módulo "Custos de Influência" (tabelas
+// registros/historico no projeto Blow), com service role key - bypassa RLS.
+// Use só em server functions/rotas server, nunca exponha ao client.
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 
-const SUPABASE_URL = "https://nkigtgxpdtriwwqipomh.supabase.co";
-
 function createSupabaseAdminClient() {
-  const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY_CUSTO;
+  const SUPABASE_URL = process.env.SUPABASE_URL;
+  const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!SUPABASE_SERVICE_ROLE_KEY) {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     const message =
-      "Variável de ambiente ausente: SUPABASE_SERVICE_ROLE_KEY_CUSTO. Configure em .env.local (dev) ou nas Environment Variables do Lovable Cloud (produção).";
+      "Variáveis de ambiente ausentes: SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY. Configure no .env.local.";
     console.error(`[Supabase] ${message}`);
     throw new Error(message);
   }
